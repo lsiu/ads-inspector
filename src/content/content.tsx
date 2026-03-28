@@ -54,11 +54,15 @@ const collectAuctionData = (): AdAuctionData => {
 
 // Prebid.js event listeners
 const setupPrebidListeners = () => {
+  console.log('[Ad Inspector] Checking for Prebid.js...');
+  
   // Wait for pbjs to be available
   const waitForPbjs = setInterval(() => {
-    if (typeof (window as any).pbjs !== 'undefined') {
+    const pbjs = (window as any).pbjs;
+    console.log('[Ad Inspector] pbjs available:', !!pbjs);
+    
+    if (pbjs) {
       clearInterval(waitForPbjs);
-      const pbjs = (window as any).pbjs;
 
       // Listen to auction init event
       pbjs.onEvent('auctionInit', (data: any) => {
@@ -142,8 +146,11 @@ const setupPrebidListeners = () => {
     }
   }, 100);
 
-  // Stop waiting after 5 seconds
-  setTimeout(() => clearInterval(waitForPbjs), 5000);
+  // Stop waiting after 10 seconds (increased from 5)
+  setTimeout(() => {
+    clearInterval(waitForPbjs);
+    console.log('[Ad Inspector] Timeout waiting for Prebid.js - pbjs not found');
+  }, 10000);
 };
 
 // Google Tag Manager dataLayer listener
@@ -172,6 +179,7 @@ const setupGTMListeners = () => {
 };
 
 // Initialize listeners
+console.log('[Ad Inspector] Content script starting...');
 setupPrebidListeners();
 setupGTMListeners();
 
