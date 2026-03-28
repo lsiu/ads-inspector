@@ -23,7 +23,7 @@
   "devtools_page": "src/devtools/devtools.html",
   "web_accessible_resources": [
     {
-      "resources": ["src/devtools/panel.html", "src/devtools/panel.tsx"],
+      "resources": ["src/devtools/panel.html", "injected.js"],
       "matches": ["<all_urls>"]
     }
   ]
