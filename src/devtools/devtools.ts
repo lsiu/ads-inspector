@@ -2,7 +2,7 @@
 chrome.devtools.panels.create(
   'Ad Inspector',
   '',
-  'panel.html',
+  'src/devtools/panel.html',
   () => {
     console.log('[Ad Inspector] DevTools panel created');
   }
