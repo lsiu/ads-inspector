@@ -34,28 +34,41 @@ const Panel: React.FC = () => {
   const [port, setPort] = useState<chrome.runtime.Port | null>(null);
 
   useEffect(() => {
+    console.log('[Panel] Connecting to background...');
+    
     // Connect to background service worker
     const connection = chrome.runtime.connect({ name: 'devtools-panel' });
     setPort(connection);
 
+    console.log('[Panel] Connected:', connection.name, 'Tab:', connection.sender?.tab?.id);
+
     connection.onMessage.addListener((message) => {
+      console.log('[Panel] Received message:', message);
       if (message.type === 'AUCTION_DATA_UPDATE') {
+        console.log('[Panel] Updating auction data, slots:', message.payload.adSlots?.length);
         setAuctionData(message.payload);
       }
     });
 
+    connection.onDisconnect.addListener(() => {
+      console.log('[Panel] Disconnected from background');
+    });
+
     return () => {
+      console.log('[Panel] Cleaning up connection');
       connection.disconnect();
     };
   }, []);
 
   const handleClearData = () => {
+    console.log('[Panel] Clearing data');
     if (port) {
       port.postMessage({ type: 'CLEAR_DATA' });
     }
   };
 
   const handleRefresh = () => {
+    console.log('[Panel] Refreshing data');
     if (port) {
       port.postMessage({ type: 'GET_DATA' });
     }
