@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Ad Auction Inspector",
+  "version": "1.0.0",
+  "description": "Monitor Prebid.js and Google Tag Manager ad auctions in Chrome DevTools",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "src/background/background.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/content.tsx"],
+      "run_at": "document_start"
+    }
+  ],
+  "devtools_page": "src/devtools/devtools.html",
+  "web_accessible_resources": [
+    {
+      "resources": ["src/devtools/panel.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
