@@ -27,22 +27,18 @@ npm install
 ### Build Commands
 
 ```bash
-# Development build with sourcemaps (for debugging)
-npm run build:dev
-
-# Production build (minified, no sourcemaps)
-npm run build:prod
-
-# Standard build (uses NODE_ENV to determine settings)
+# Standard build (includes sourcemaps)
 npm run build
 
 # Lint code
 npm run lint
 ```
 
+**Note:** Due to a Vite 8 + React 19 compatibility issue, all builds include sourcemaps by default. The build output is optimized for Chrome extensions.
+
 ### Load Extension in Chrome
 
-1. Run `npm run build:dev` (for development with sourcemaps) or `npm run build:prod` (for production)
+1. Run `npm run build`
 2. Open Chrome and navigate to `chrome://extensions/`
 3. Enable **Developer mode** (toggle in top-right)
 4. Click **Load unpacked**
@@ -50,10 +46,10 @@ npm run lint
 
 ### Debugging with Sourcemaps
 
-For development and debugging, use `npm run build:dev` which:
-- Generates inline sourcemaps for all files
-- Disables minification for readable code
-- Allows you to debug original TypeScript/React source in Chrome DevTools
+All builds include sourcemaps by default. This allows you to:
+- Debug original TypeScript/React source in Chrome DevTools
+- Set breakpoints in your source files
+- See meaningful stack traces
 
 When the extension is loaded, you can:
 1. Open DevTools on any page
