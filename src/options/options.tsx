@@ -2,61 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 
-// IndexedDB helper for storing FileSystemHandle objects
-const DB_NAME = 'ad-auction-inspector';
-const DB_VERSION = 1;
-const STORE_NAME = 'storage';
-
-const openDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
-      }
-    };
-  });
-};
-
-const storeDirectoryHandle = async (handle: FileSystemDirectoryHandle, name: string): Promise<void> => {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    const putRequest = store.put(handle, 'directoryHandle');
-    putRequest.onsuccess = () => {
-      store.put(name, 'directoryName');
-      resolve();
-    };
-    putRequest.onerror = () => reject(putRequest.error);
-  });
-};
-
-const getDirectoryName = async (): Promise<string | null> => {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const getRequest = store.get('directoryName');
-    getRequest.onsuccess = () => resolve(getRequest.result || null);
-    getRequest.onerror = () => reject(getRequest.error);
-  });
-};
-
-const clearDirectoryHandle = async (): Promise<void> => {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    store.delete('directoryHandle');
-    store.delete('directoryName');
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
-  });
-};
+// Import shared IndexedDB helpers
+import { storeDirectoryHandle, getDirectoryName, clearDirectoryHandle } from '../shared/idb';
 
 const Options: React.FC = () => {
   const [directoryName, setDirectoryName] = useState<string>('');
@@ -110,7 +57,7 @@ const Options: React.FC = () => {
       setDirectoryName('');
       setStatus('idle');
       setErrorMessage('');
-      
+
       // Notify background script to clear the handle
       chrome.runtime.sendMessage({ type: 'DIRECTORY_HANDLE_CLEARED' });
     } catch (error: any) {
