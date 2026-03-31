@@ -33,7 +33,7 @@ const Panel: React.FC = () => {
   const [selectedSlot, setSelectedSlot] = useState<AdSlot | null>(null);
   const [port, setPort] = useState<chrome.runtime.Port | null>(null);
   const [isDirectoryConfigured, setIsDirectoryConfigured] = useState<boolean>(false);
-  const [directoryPath, setDirectoryPath] = useState<string | null>(null);
+  const [directoryName, setDirectoryName] = useState<string | null>(null);
 
   useEffect(() => {
     console.log('[Panel] Connecting to background...');
@@ -42,10 +42,10 @@ const Panel: React.FC = () => {
     const connection = chrome.runtime.connect({ name: 'devtools-panel' });
     setPort(connection);
 
-    console.log('[Panel] Connected:', connection.name, 'Tab:', connection.sender?.tab?.id);
+    console.log('[Panel] Connected:', connection.name);
 
     connection.onMessage.addListener((message) => {
-      console.log('[Panel] Received message:', message);
+      console.log('[Panel] Received message:', message.type);
       
       if (message.type === 'AUCTION_DATA_UPDATE') {
         console.log('[Panel] Updating auction data, slots:', message.payload.adSlots?.length);
@@ -54,12 +54,12 @@ const Panel: React.FC = () => {
       
       if (message.type === 'DIRECTORY_STATUS') {
         setIsDirectoryConfigured(message.isConfigured);
-        setDirectoryPath(message.directoryPath);
+        setDirectoryName(message.directoryName);
       }
       
       if (message.type === 'DIRECTORY_NOT_CONFIGURED') {
         setIsDirectoryConfigured(false);
-        setDirectoryPath(null);
+        setDirectoryName(null);
       }
     });
 
@@ -140,10 +140,10 @@ const Panel: React.FC = () => {
       )}
 
       {/* Directory Info Banner */}
-      {isDirectoryConfigured && directoryPath && (
+      {isDirectoryConfigured && directoryName && (
         <div className="bg-green-900/30 border-b border-green-700 px-4 py-2">
           <p className="text-green-400 text-sm">
-            ✓ Saving to: <span className="font-mono">{directoryPath}</span>
+            ✓ Saving to: <span className="font-mono">{directoryName}</span>
           </p>
         </div>
       )}

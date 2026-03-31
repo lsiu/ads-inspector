@@ -2,16 +2,72 @@ import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 
+// IndexedDB helper for storing FileSystemHandle objects
+const DB_NAME = 'ad-auction-inspector';
+const DB_VERSION = 1;
+const STORE_NAME = 'storage';
+
+const openDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+  });
+};
+
+const storeDirectoryHandle = async (handle: FileSystemDirectoryHandle, name: string): Promise<void> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const putRequest = store.put(handle, 'directoryHandle');
+    putRequest.onsuccess = () => {
+      store.put(name, 'directoryName');
+      resolve();
+    };
+    putRequest.onerror = () => reject(putRequest.error);
+  });
+};
+
+const getDirectoryName = async (): Promise<string | null> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const getRequest = store.get('directoryName');
+    getRequest.onsuccess = () => resolve(getRequest.result || null);
+    getRequest.onerror = () => reject(getRequest.error);
+  });
+};
+
+const clearDirectoryHandle = async (): Promise<void> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    store.delete('directoryHandle');
+    store.delete('directoryName');
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+};
+
 const Options: React.FC = () => {
-  const [directoryPath, setDirectoryPath] = useState<string>('');
+  const [directoryName, setDirectoryName] = useState<string>('');
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   useEffect(() => {
-    // Load saved directory info
-    chrome.storage.local.get(['storageDirectoryPath'], (result) => {
-      if (result.storageDirectoryPath) {
-        setDirectoryPath(result.storageDirectoryPath as string);
+    // Load directory name from IndexedDB
+    getDirectoryName().then((name) => {
+      if (name) {
+        setDirectoryName(name);
       }
     });
   }, []);
@@ -23,24 +79,24 @@ const Options: React.FC = () => {
 
       // Use File System Access API to prompt user for directory
       const dirHandle = await (window as any).showDirectoryPicker();
-      
+
       // Verify we have read/write permission
-      const permission = await dirHandle.queryPermission({ mode: 'readwrite' });
+      const permission = await (dirHandle as any).queryPermission({ mode: 'readwrite' });
       if (permission !== 'granted') {
-        const requestResult = await dirHandle.requestPermission({ mode: 'readwrite' });
+        const requestResult = await (dirHandle as any).requestPermission({ mode: 'readwrite' });
         if (requestResult !== 'granted') {
           throw new Error('Permission denied for directory access');
         }
       }
 
-      // Store the directory handle for later use
-      await chrome.storage.local.set({
-        storageDirectoryHandle: dirHandle,
-        storageDirectoryPath: dirHandle.name,
-      });
+      // Store the handle directly in IndexedDB (this is the ONLY way to persist handles)
+      await storeDirectoryHandle(dirHandle, dirHandle.name);
 
-      setDirectoryPath(dirHandle.name);
+      setDirectoryName(dirHandle.name);
       setStatus('success');
+
+      // Notify background script to reload the handle from IndexedDB
+      chrome.runtime.sendMessage({ type: 'DIRECTORY_HANDLE_STORED' });
     } catch (error: any) {
       console.error('[Ad Inspector] Error selecting directory:', error);
       setErrorMessage(error.message || 'Failed to select directory');
@@ -50,10 +106,13 @@ const Options: React.FC = () => {
 
   const handleClearDirectory = async () => {
     try {
-      await chrome.storage.local.remove(['storageDirectoryHandle', 'storageDirectoryPath']);
-      setDirectoryPath('');
+      await clearDirectoryHandle();
+      setDirectoryName('');
       setStatus('idle');
       setErrorMessage('');
+      
+      // Notify background script to clear the handle
+      chrome.runtime.sendMessage({ type: 'DIRECTORY_HANDLE_CLEARED' });
     } catch (error: any) {
       console.error('[Ad Inspector] Error clearing directory:', error);
       setErrorMessage(error.message || 'Failed to clear directory');
@@ -65,20 +124,20 @@ const Options: React.FC = () => {
     <div className="min-h-screen bg-gray-900 text-gray-100 p-8">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold text-white mb-6">Ad Auction Inspector Settings</h1>
-        
+
         <div className="bg-gray-800 rounded-lg p-6 mb-6">
           <h2 className="text-xl font-semibold text-white mb-4">Storage Directory</h2>
           <p className="text-gray-400 mb-4">
-            Select a directory where auction data will be saved. Data is written hourly to files 
+            Select a directory where auction data will be saved. Data is written hourly to files
             named <code className="bg-gray-700 px-2 py-1 rounded">auctions-YYYY-MM-DD-HH.json</code>.
           </p>
-          
+
           <div className="flex items-center gap-4 mb-4">
             <div className="flex-1 bg-gray-700 rounded-lg p-4">
-              {directoryPath ? (
+              {directoryName ? (
                 <div>
                   <p className="text-sm text-gray-400 mb-1">Current directory:</p>
-                  <p className="text-lg font-mono text-green-400">{directoryPath}</p>
+                  <p className="text-lg font-mono text-green-400">{directoryName}</p>
                 </div>
               ) : (
                 <p className="text-yellow-400">No directory selected. Auction data will not be saved.</p>
@@ -93,7 +152,7 @@ const Options: React.FC = () => {
             >
               Select Directory
             </button>
-            {directoryPath && (
+            {directoryName && (
               <button
                 onClick={handleClearDirectory}
                 className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
