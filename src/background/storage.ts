@@ -111,7 +111,7 @@ const getHourlyFilename = (): string => {
 export const writeAuctionData = async (data: AdAuctionData): Promise<void> => {
   // Ensure initialized before checking handle
   await ensureInitialized();
-  
+
   if (!directoryHandle) {
     return;
   }
@@ -122,13 +122,26 @@ export const writeAuctionData = async (data: AdAuctionData): Promise<void> => {
 
     let fileHandle: FileSystemFileHandle;
     try {
+      // Try to get the existing file
       fileHandle = await directoryHandle.getFileHandle(filename);
     } catch (error) {
+      // File doesn't exist, create it
       fileHandle = await directoryHandle.getFileHandle(filename, { create: true });
     }
 
+    // Read existing content first
+    let existingContent = '';
+    try {
+      const file = await fileHandle.getFile();
+      existingContent = await file.text();
+    } catch (error) {
+      // File is empty or unreadable, start fresh
+      existingContent = '';
+    }
+
+    // Append new data and write back
     const writable = await fileHandle.createWritable();
-    await writable.write(dataLine);
+    await writable.write(existingContent + dataLine);
     await writable.close();
 
     console.log('[Ad Inspector] Data written to:', filename);
