@@ -1,6 +1,6 @@
 // Background service worker - handles message routing and data persistence
 
-import { writeAuctionData } from './storage';
+import { initStorage, isDirectoryConfigured, writeAuctionData, getDirectoryPath } from './storage';
 
 interface AdAuctionData {
   pageUrl: string;
@@ -35,6 +35,14 @@ const tabData: Map<number, AdAuctionData> = new Map();
 // DevTools panel ports - keyed by inspected window tab ID
 const devToolsPorts: Map<number, chrome.runtime.Port> = new Map();
 
+// Track if directory config has been checked
+let directoryCheckRequested = false;
+
+// Initialize storage on startup
+initStorage().then(() => {
+  console.log('[Ad Inspector] Background service worker initialized');
+});
+
 // Listen for messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('[Ad Inspector] Background received message:', message);
@@ -66,11 +74,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
       });
 
-      // Persist to file system
-      writeAuctionData(message.payload);
+      // Write to file system
+      writeAuctionData(message.payload).then(() => {
+        // Check if directory is configured after write attempt
+        if (!isDirectoryConfigured() && !directoryCheckRequested) {
+          directoryCheckRequested = true;
+          // Notify all panels that directory needs to be configured
+          devToolsPorts.forEach((port) => {
+            port.postMessage({
+              type: 'DIRECTORY_NOT_CONFIGURED',
+            });
+          });
+        }
+      });
     } else {
       console.log('[Ad Inspector] No tabId in sender');
     }
+  }
+
+  if (message.type === 'CHECK_DIRECTORY_STATUS') {
+    // Respond with current directory status
+    sendResponse({
+      isConfigured: isDirectoryConfigured(),
+      directoryPath: getDirectoryPath(),
+    });
+    return true; // Keep channel open for async response
   }
 
   sendResponse({ success: true });
@@ -82,75 +110,81 @@ chrome.runtime.onConnect.addListener((port) => {
   console.log('[Ad Inspector] onConnect:', port.name, 'Tab:', port.sender?.tab?.id);
   
   if (port.name === 'devtools-panel') {
-    // Get the tab ID from the inspected window
     const tabId = port.sender?.tab?.id;
     console.log('[Ad Inspector] DevTools panel connecting, tabId from sender:', tabId);
     
-    // For DevTools panels, we need to get the inspected window's tab ID
-    // The port.sender.tab might be undefined, so we use a workaround
-    if (port.sender?.id === chrome.runtime.id) {
-      // This is a connection from our own extension
-      // We'll store it and match by tabId when data arrives
-      const portKey = tabId || Date.now(); // Use tabId or temporary key
-      devToolsPorts.set(portKey, port);
-      console.log('[Ad Inspector] DevTools panel connected with key:', portKey);
-      console.log('[Ad Inspector] Current tabData keys:', Array.from(tabData.keys()));
-      console.log('[Ad Inspector] Current port keys:', Array.from(devToolsPorts.keys()));
+    // For DevTools panels, we store with tabId or temporary key
+    const portKey = tabId || Date.now();
+    devToolsPorts.set(portKey, port);
+    console.log('[Ad Inspector] DevTools panel connected with key:', portKey);
+    console.log('[Ad Inspector] Current tabData keys:', Array.from(tabData.keys()));
+    console.log('[Ad Inspector] Current port keys:', Array.from(devToolsPorts.keys()));
+    console.log('[Ad Inspector] Directory configured:', isDirectoryConfigured());
 
-      // Send existing data for ANY tab
-      const allData: AdAuctionData = {
-        pageUrl: '',
-        timestamp: Date.now(),
-        adSlots: [],
-      };
-      
-      tabData.forEach((data) => {
-        allData.adSlots.push(...data.adSlots);
-        if (!allData.pageUrl) allData.pageUrl = data.pageUrl;
-      });
-      
-      console.log('[Ad Inspector] Sending aggregated data, slots:', allData.adSlots.length);
-      port.postMessage({
-        type: 'AUCTION_DATA_UPDATE',
-        payload: allData,
-      });
+    // Send directory status to panel
+    port.postMessage({
+      type: 'DIRECTORY_STATUS',
+      isConfigured: isDirectoryConfigured(),
+      directoryPath: getDirectoryPath(),
+    });
 
-      // Handle disconnect
-      port.onDisconnect.addListener(() => {
-        devToolsPorts.delete(portKey);
-        console.log('[Ad Inspector] DevTools panel disconnected for key:', portKey);
-      });
+    // Send existing data for ANY tab
+    const allData: AdAuctionData = {
+      pageUrl: '',
+      timestamp: Date.now(),
+      adSlots: [],
+    };
+    
+    tabData.forEach((data) => {
+      allData.adSlots.push(...data.adSlots);
+      if (!allData.pageUrl) allData.pageUrl = data.pageUrl;
+    });
+    
+    console.log('[Ad Inspector] Sending aggregated data, slots:', allData.adSlots.length);
+    port.postMessage({
+      type: 'AUCTION_DATA_UPDATE',
+      payload: allData,
+    });
 
-      // Handle messages from panel
-      port.onMessage.addListener((message) => {
-        console.log('[Ad Inspector] Received message from panel:', message);
-        if (message.type === 'GET_DATA') {
-          // Return all data from all tabs
-          const allData: AdAuctionData = {
-            pageUrl: '',
-            timestamp: Date.now(),
-            adSlots: [],
-          };
-          
-          tabData.forEach((data) => {
-            allData.adSlots.push(...data.adSlots);
-            if (!allData.pageUrl) allData.pageUrl = data.pageUrl;
-          });
-          
-          port.postMessage({
-            type: 'AUCTION_DATA_UPDATE',
-            payload: allData,
-          });
-        }
-        if (message.type === 'CLEAR_DATA') {
-          tabData.clear();
-          port.postMessage({
-            type: 'AUCTION_DATA_UPDATE',
-            payload: { pageUrl: '', timestamp: Date.now(), adSlots: [] },
-          });
-        }
-      });
-    }
+    // Handle disconnect
+    port.onDisconnect.addListener(() => {
+      devToolsPorts.delete(portKey);
+      console.log('[Ad Inspector] DevTools panel disconnected for key:', portKey);
+    });
+
+    // Handle messages from panel
+    port.onMessage.addListener((message) => {
+      console.log('[Ad Inspector] Received message from panel:', message);
+      if (message.type === 'GET_DATA') {
+        // Return all data from all tabs
+        const allData: AdAuctionData = {
+          pageUrl: '',
+          timestamp: Date.now(),
+          adSlots: [],
+        };
+        
+        tabData.forEach((data) => {
+          allData.adSlots.push(...data.adSlots);
+          if (!allData.pageUrl) allData.pageUrl = data.pageUrl;
+        });
+        
+        port.postMessage({
+          type: 'AUCTION_DATA_UPDATE',
+          payload: allData,
+        });
+      }
+      if (message.type === 'CLEAR_DATA') {
+        tabData.clear();
+        port.postMessage({
+          type: 'AUCTION_DATA_UPDATE',
+          payload: { pageUrl: '', timestamp: Date.now(), adSlots: [] },
+        });
+      }
+      if (message.type === 'OPEN_OPTIONS') {
+        // Open the options page
+        chrome.tabs.create({ url: chrome.runtime.getURL('src/options/options.html') });
+      }
+    });
   }
 });
 

@@ -15,6 +15,7 @@ export default defineConfig({
       input: {
         devtools: 'src/devtools/devtools.html',
         panel: 'src/devtools/panel.html',
+        options: 'src/options/options.html',
       },
     },
   },

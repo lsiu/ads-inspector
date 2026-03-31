@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "description": "Monitor Prebid.js and Google Tag Manager ad auctions in Chrome DevTools",
   "permissions": [
-    "storage"
+    "storage",
+    "fileSystem"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -21,6 +22,7 @@
     }
   ],
   "devtools_page": "src/devtools/devtools.html",
+  "options_page": "src/options/options.html",
   "web_accessible_resources": [
     {
       "resources": ["src/devtools/panel.html", "injected.js"],

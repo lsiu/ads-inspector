@@ -32,6 +32,8 @@ const Panel: React.FC = () => {
   const [auctionData, setAuctionData] = useState<AdAuctionData | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<AdSlot | null>(null);
   const [port, setPort] = useState<chrome.runtime.Port | null>(null);
+  const [isDirectoryConfigured, setIsDirectoryConfigured] = useState<boolean>(false);
+  const [directoryPath, setDirectoryPath] = useState<string | null>(null);
 
   useEffect(() => {
     console.log('[Panel] Connecting to background...');
@@ -44,9 +46,20 @@ const Panel: React.FC = () => {
 
     connection.onMessage.addListener((message) => {
       console.log('[Panel] Received message:', message);
+      
       if (message.type === 'AUCTION_DATA_UPDATE') {
         console.log('[Panel] Updating auction data, slots:', message.payload.adSlots?.length);
         setAuctionData(message.payload);
+      }
+      
+      if (message.type === 'DIRECTORY_STATUS') {
+        setIsDirectoryConfigured(message.isConfigured);
+        setDirectoryPath(message.directoryPath);
+      }
+      
+      if (message.type === 'DIRECTORY_NOT_CONFIGURED') {
+        setIsDirectoryConfigured(false);
+        setDirectoryPath(null);
       }
     });
 
@@ -74,12 +87,26 @@ const Panel: React.FC = () => {
     }
   };
 
+  const handleOpenOptions = () => {
+    console.log('[Panel] Opening options page');
+    if (port) {
+      port.postMessage({ type: 'OPEN_OPTIONS' });
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-gray-900 text-gray-100">
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
         <h1 className="text-lg font-semibold text-white">Ad Auction Inspector</h1>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleOpenOptions}
+            className="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-700 rounded transition-colors"
+            title="Configure storage directory"
+          >
+            ⚙️ Settings
+          </button>
           <button
             onClick={handleRefresh}
             className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 rounded transition-colors"
@@ -94,6 +121,32 @@ const Panel: React.FC = () => {
           </button>
         </div>
       </header>
+
+      {/* Directory Warning Banner */}
+      {!isDirectoryConfigured && (
+        <div className="bg-yellow-900/50 border-b border-yellow-700 px-4 py-2">
+          <div className="flex items-center justify-between">
+            <p className="text-yellow-400 text-sm">
+              ⚠️ Storage directory not configured. Auction data will not be saved to disk.
+            </p>
+            <button
+              onClick={handleOpenOptions}
+              className="px-3 py-1 text-sm bg-yellow-600 hover:bg-yellow-700 text-white rounded transition-colors"
+            >
+              Configure
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Directory Info Banner */}
+      {isDirectoryConfigured && directoryPath && (
+        <div className="bg-green-900/30 border-b border-green-700 px-4 py-2">
+          <p className="text-green-400 text-sm">
+            ✓ Saving to: <span className="font-mono">{directoryPath}</span>
+          </p>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 flex overflow-hidden">
