@@ -7,7 +7,9 @@
       "Bash(npm run *)",
       "Bash(dir *)",
       "Bash(findstr *)",
-      "Bash(select-string *)"
+      "Bash(select-string *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   },
   "$version": 3
