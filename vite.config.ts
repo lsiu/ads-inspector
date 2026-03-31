@@ -13,6 +13,13 @@ export default defineConfig({
     target: 'esnext',
     sourcemap: false,
     minify: false,
+    rollupOptions: {
+      input: {
+        panel: 'src/devtools/panel.html',
+        devtools: 'src/devtools/devtools.html',
+        options: 'src/options/options.html',
+      },
+    },
   },
   base: './',
 })

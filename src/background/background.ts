@@ -136,6 +136,8 @@ chrome.runtime.onConnect.addListener((port) => {
     port.onDisconnect.addListener(() => devToolsPorts.delete(portKey));
 
     port.onMessage.addListener((message) => {
+      console.log('[Ad Inspector] Received from panel:', message);
+      
       if (message.type === 'GET_DATA') {
         const allData: AdAuctionData = { pageUrl: '', timestamp: Date.now(), adSlots: [] };
         tabData.forEach((data) => {
@@ -149,7 +151,17 @@ chrome.runtime.onConnect.addListener((port) => {
         port.postMessage({ type: 'AUCTION_DATA_UPDATE', payload: { pageUrl: '', timestamp: Date.now(), adSlots: [] } });
       }
       if (message.type === 'OPEN_OPTIONS') {
-        chrome.tabs.create({ url: chrome.runtime.getURL('src/options/options.html') });
+        console.log('[Ad Inspector] Opening options page...');
+        chrome.tabs.create({ 
+          url: chrome.runtime.getURL('src/options/options.html'),
+          active: true,
+        }, (tab) => {
+          if (chrome.runtime.lastError) {
+            console.error('[Ad Inspector] Error opening options:', chrome.runtime.lastError);
+          } else {
+            console.log('[Ad Inspector] Options page opened in tab:', tab.id);
+          }
+        });
       }
     });
   }
