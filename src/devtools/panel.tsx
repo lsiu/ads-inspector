@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AdSlots from './components/AdSlots';
+import AuctionsList from './components/AuctionsList';
 
 interface Bid {
   bidder: string;
@@ -22,15 +22,18 @@ interface AdSlot {
   winningBid?: Bid;
 }
 
-interface AdAuctionData {
-  pageUrl: string;
+interface AuctionEvent {
+  id: string;
+  slotCode: string;
   timestamp: number;
-  adSlots: AdSlot[];
+  bids: Bid[];
+  winningBid?: Bid;
+  sizes: number[][];
 }
 
 const Panel: React.FC = () => {
-  const [auctionData, setAuctionData] = useState<AdAuctionData | null>(null);
-  const [selectedSlot, setSelectedSlot] = useState<AdSlot | null>(null);
+  const [auctionEvents, setAuctionEvents] = useState<AuctionEvent[]>([]);
+  const [selectedAuction, setSelectedAuction] = useState<AuctionEvent | null>(null);
   const [port, setPort] = useState<chrome.runtime.Port | null>(null);
   const [isDirectoryConfigured, setIsDirectoryConfigured] = useState<boolean>(false);
   const [directoryName, setDirectoryName] = useState<string | null>(null);
@@ -49,7 +52,25 @@ const Panel: React.FC = () => {
       
       if (message.type === 'AUCTION_DATA_UPDATE') {
         console.log('[Panel] Updating auction data, slots:', message.payload.adSlots?.length);
-        setAuctionData(message.payload);
+        
+        // Convert adSlots to individual auction events
+        const events: AuctionEvent[] = [];
+        message.payload.adSlots?.forEach((slot: AdSlot) => {
+          // Create an auction event for each slot
+          const event: AuctionEvent = {
+            id: `${slot.slotCode}-${slot.bids[0]?.auctionId || Date.now()}`,
+            slotCode: slot.slotCode,
+            timestamp: message.payload.timestamp,
+            bids: slot.bids,
+            winningBid: slot.winningBid,
+            sizes: slot.sizes,
+          };
+          events.push(event);
+        });
+        
+        // Sort by timestamp (newest first)
+        events.sort((a, b) => b.timestamp - a.timestamp);
+        setAuctionEvents(events);
       }
       
       if (message.type === 'DIRECTORY_STATUS') {
@@ -150,30 +171,33 @@ const Panel: React.FC = () => {
 
       {/* Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Ad Slots List */}
+        {/* Auctions List */}
         <div className="w-1/3 border-r border-gray-700 overflow-y-auto">
-          <AdSlots
-            adSlots={auctionData?.adSlots || []}
-            selectedSlot={selectedSlot}
-            onSelectSlot={setSelectedSlot}
+          <AuctionsList
+            auctions={auctionEvents}
+            selectedAuction={selectedAuction}
+            onSelectAuction={setSelectedAuction}
           />
         </div>
 
         {/* Details Panel */}
         <div className="flex-1 overflow-y-auto p-4">
-          {selectedSlot ? (
+          {selectedAuction ? (
             <div className="space-y-4">
               <div>
                 <h2 className="text-xl font-bold text-white mb-2">
-                  {selectedSlot.slotCode}
+                  {selectedAuction.slotCode}
                 </h2>
                 <p className="text-sm text-gray-400">
-                  Sizes: {selectedSlot.sizes.map(s => `${s[0]}x${s[1]}`).join(', ') || 'Not specified'}
+                  Auction Time: {new Date(selectedAuction.timestamp).toLocaleTimeString()}
+                </p>
+                <p className="text-sm text-gray-400">
+                  Sizes: {selectedAuction.sizes.map(s => `${s[0]}x${s[1]}`).join(', ') || 'Not specified'}
                 </p>
               </div>
 
               {/* Winning Bid */}
-              {selectedSlot.winningBid && (
+              {selectedAuction.winningBid && (
                 <div className="bg-green-900/30 border border-green-700 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-green-400 mb-2">
                     Winning Bid
@@ -181,24 +205,24 @@ const Panel: React.FC = () => {
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
                       <span className="text-gray-400">Bidder:</span>
-                      <span className="ml-2 text-white">{selectedSlot.winningBid.bidder}</span>
+                      <span className="ml-2 text-white">{selectedAuction.winningBid.bidder}</span>
                     </div>
                     <div>
                       <span className="text-gray-400">CPM:</span>
                       <span className="ml-2 text-green-400 font-semibold">
-                        ${selectedSlot.winningBid.cpm.toFixed(2)}
+                        ${selectedAuction.winningBid.cpm.toFixed(2)}
                       </span>
                     </div>
                     <div>
                       <span className="text-gray-400">Size:</span>
                       <span className="ml-2 text-white">
-                        {selectedSlot.winningBid.width}x{selectedSlot.winningBid.height}
+                        {selectedAuction.winningBid.width}x{selectedAuction.winningBid.height}
                       </span>
                     </div>
                     <div>
                       <span className="text-gray-400">Creative ID:</span>
                       <span className="ml-2 text-white">
-                        {selectedSlot.winningBid.creativeId || 'N/A'}
+                        {selectedAuction.winningBid.creativeId || 'N/A'}
                       </span>
                     </div>
                   </div>
@@ -207,7 +231,7 @@ const Panel: React.FC = () => {
 
               {/* All Bids */}
               <div>
-                <h3 className="text-lg font-semibold text-white mb-2">All Bids</h3>
+                <h3 className="text-lg font-semibold text-white mb-2">All Bids ({selectedAuction.bids.length})</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-800">
@@ -219,11 +243,11 @@ const Panel: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedSlot.bids.map((bid, index) => (
+                      {selectedAuction.bids.map((bid, index) => (
                         <tr
                           key={index}
                           className={`border-t border-gray-700 ${
-                            selectedSlot.winningBid?.bidId === bid.bidId
+                            selectedAuction.winningBid?.bidId === bid.bidId
                               ? 'bg-green-900/20'
                               : ''
                           }`}
@@ -236,7 +260,7 @@ const Panel: React.FC = () => {
                             {bid.width}x{bid.height}
                           </td>
                           <td className="px-3 py-2">
-                            {selectedSlot.winningBid?.bidId === bid.bidId ? (
+                            {selectedAuction.winningBid?.bidId === bid.bidId ? (
                               <span className="px-2 py-0.5 text-xs bg-green-600 text-white rounded">
                                 Winner
                               </span>
@@ -254,7 +278,7 @@ const Panel: React.FC = () => {
               </div>
 
               {/* Creative Preview */}
-              {selectedSlot.winningBid?.ad && (
+              {selectedAuction.winningBid?.ad && (
                 <div>
                   <h3 className="text-lg font-semibold text-white mb-2">
                     Creative Preview
@@ -262,7 +286,7 @@ const Panel: React.FC = () => {
                   <div className="bg-gray-800 rounded-lg p-4">
                     <div
                       className="bg-white rounded p-2"
-                      dangerouslySetInnerHTML={{ __html: selectedSlot.winningBid.ad }}
+                      dangerouslySetInnerHTML={{ __html: selectedAuction.winningBid.ad }}
                     />
                   </div>
                 </div>
@@ -270,7 +294,7 @@ const Panel: React.FC = () => {
             </div>
           ) : (
             <div className="flex items-center justify-center h-full text-gray-500">
-              Select an ad slot to view details
+              Select an auction to view details
             </div>
           )}
         </div>
