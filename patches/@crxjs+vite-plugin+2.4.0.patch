@@ -1,0 +1,15 @@
+diff --git a/node_modules/@crxjs/vite-plugin/dist/index.mjs b/node_modules/@crxjs/vite-plugin/dist/index.mjs
+index 04fce9b..2a71b3f 100644
+--- a/node_modules/@crxjs/vite-plugin/dist/index.mjs
++++ b/node_modules/@crxjs/vite-plugin/dist/index.mjs
+@@ -802,8 +802,8 @@ const pluginContentScripts = () => {
+                 });
+                 script.loaderName = this.getFileName(refId);
+               } else {
+-                bundleFileInfo.code = `(function(){${bundleFileInfo.code}})()
+-`;
++                bundleFileInfo.code = `(function(){${bundleFileInfo.code}
++})()`;
+               }
+             } else if (script.type === "iife") {
+               throw new Error("IIFE content scripts are not implemented");
