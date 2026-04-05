@@ -38,6 +38,9 @@ adsads/
 │   │   └── options.tsx
 │   ├── public/
 │   │   └── manifest.json  # Chrome extension manifest
+│   ├── shared/            # Shared types and utilities
+│   │   ├── types.ts       # All message types and data interfaces
+│   │   └── idb.ts         # Shared IndexedDB helpers
 │   ├── App.tsx            # Main React component
 │   ├── App.css            # Component styles
 │   ├── index.css          # Global styles (Tailwind)
@@ -82,6 +85,24 @@ The extension uses an **event streaming** model:
 3. **NDJSON file** contains one line per event (true event stream, not hourly snapshots)
 
 **Event types**: `AUCTION_INIT`, `BID_REQUESTED`, `BID_RESPONSE`, `BID_WON`, `AUCTION_END`, `GTM_EVENT`, `GPT_RENDER_ENDED`
+
+### Why State Accumulates in Background
+
+The background service worker accumulates auction state (not just forwarding raw events) so that:
+
+- When a user opens DevTools **after** auctions have already run, the panel receives the full accumulated snapshot on connect
+- Without this, any events before the panel opened would be lost to the UI
+- The service worker lifetime is typically tied to the browsing session, so state persists for the duration of active use
+
+### Shared Types
+
+All message types and data interfaces live in `src/shared/types.ts` and are imported by every module:
+
+- **Message types** (by communication channel): `ContentToBackgroundMessage`, `OptionsToBackgroundMessage`, `PanelToBackgroundMessage`, `BackgroundToPanelMessage`
+- **Auction event types**: `AuctionEventType` union, `AuctionEventMessage`
+- **Data interfaces**: `Bid`, `GptInfo`, `AdSlot`, `AdAuctionData`, `NDJSONEvent`
+
+This eliminates duplicated type definitions and ensures type safety across all communication boundaries.
 
 ### GPT Correlation
 
