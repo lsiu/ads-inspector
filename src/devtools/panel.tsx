@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import AuctionsList from './components/AuctionsList';
 import type { Bid, GptInfo, AdSlot } from '../shared/types';
 
@@ -15,7 +15,7 @@ interface AuctionEvent {
 const Panel: React.FC = () => {
   const [auctionEvents, setAuctionEvents] = useState<AuctionEvent[]>([]);
   const [selectedAuction, setSelectedAuction] = useState<AuctionEvent | null>(null);
-  const [port, setPort] = useState<chrome.runtime.Port | null>(null);
+  const portRef = useRef<chrome.runtime.Port | null>(null);
   const [isDirectoryConfigured, setIsDirectoryConfigured] = useState<boolean>(false);
   const [directoryName, setDirectoryName] = useState<string | null>(null);
 
@@ -40,7 +40,7 @@ const Panel: React.FC = () => {
 
     // Connect to background service worker
     const connection = chrome.runtime.connect({ name: 'devtools-panel' });
-    setPort(connection);
+    portRef.current = connection;
 
     console.log('[Panel] Connected:', connection.name);
 
@@ -67,6 +67,7 @@ const Panel: React.FC = () => {
 
     connection.onDisconnect.addListener(() => {
       console.log('[Panel] Disconnected from background');
+      portRef.current = null;
     });
 
     return () => {
@@ -77,22 +78,22 @@ const Panel: React.FC = () => {
 
   const handleClearData = () => {
     console.log('[Panel] Clearing data');
-    if (port) {
-      port.postMessage({ type: 'CLEAR_DATA' });
+    if (portRef.current) {
+      portRef.current.postMessage({ type: 'CLEAR_DATA' });
     }
   };
 
   const handleRefresh = () => {
     console.log('[Panel] Refreshing data');
-    if (port) {
-      port.postMessage({ type: 'GET_DATA' });
+    if (portRef.current) {
+      portRef.current.postMessage({ type: 'GET_DATA' });
     }
   };
 
   const handleOpenOptions = () => {
     console.log('[Panel] Opening options page');
-    if (port) {
-      port.postMessage({ type: 'OPEN_OPTIONS' });
+    if (portRef.current) {
+      portRef.current.postMessage({ type: 'OPEN_OPTIONS' });
     }
   };
 
