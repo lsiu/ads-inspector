@@ -28,12 +28,15 @@ initStorage().then(() => {
   console.log('[Ad Inspector] Background service worker initialized');
 });
 
-function getOrCreateSlot(tabId: number, adUnitCode: string, sizes: number[][] = []): AdSlot | undefined {
+function getOrCreateSlot(tabId: number, adUnitCode: string, auctionId: string, sizes: number[][] = []): AdSlot | undefined {
   const data = tabData.get(tabId);
   if (!data) return undefined;
 
-  // Try exact match first
-  let slot = data.adSlots.find((s) => s.slotCode === adUnitCode);
+  // Composite key: slotCode + auctionId (same ad unit can be re-auctioned across page reloads)
+  const compositeKey = `${adUnitCode}||${auctionId}`;
+
+  // Try exact composite match first
+  let slot = data.adSlots.find((s) => `${s.slotCode}||${s.auctionId}` === compositeKey);
   if (slot) {
     if (sizes.length > 0 && (!slot.sizes || slot.sizes.length === 0)) {
       slot.sizes = sizes;
@@ -41,7 +44,15 @@ function getOrCreateSlot(tabId: number, adUnitCode: string, sizes: number[][] = 
     return slot;
   }
 
-  // Try matching by GPT adUnitPath suffix (e.g., "/1234/ad_unit" → "ad_unit")
+  // If we have a valid auctionId, always create a new slot
+  // (prevents merging auctions from different page loads)
+  if (auctionId && auctionId !== 'unknown') {
+    slot = { slotCode: adUnitCode, auctionId, divId: '', sizes, bids: [] };
+    data.adSlots.push(slot);
+    return slot;
+  }
+
+  // Fallback: match by GPT adUnitPath suffix only for events without auctionId
   const shortName = adUnitCode.split('/').pop() || adUnitCode;
   slot = data.adSlots.find((s) => s.slotCode === shortName || s.gpt?.adUnitPath === adUnitCode);
   if (slot) {
@@ -51,8 +62,8 @@ function getOrCreateSlot(tabId: number, adUnitCode: string, sizes: number[][] = 
     return slot;
   }
 
-  // Create new slot
-  slot = { slotCode: adUnitCode, divId: '', sizes, bids: [] };
+  // Create new slot (no auctionId — use 'unknown')
+  slot = { slotCode: adUnitCode, auctionId: auctionId || 'unknown', divId: '', sizes, bids: [] };
   data.adSlots.push(slot);
   return slot;
 }
@@ -104,7 +115,7 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
   switch (message.type) {
     case 'BID_RESPONSE': {
       const { adUnitCode, sizes, bid } = d as { adUnitCode: string; sizes: number[][]; bid: Bid };
-      const slot = getOrCreateSlot(tabId, adUnitCode, sizes);
+      const slot = getOrCreateSlot(tabId, adUnitCode, bid.auctionId || auctionId, sizes);
       if (!slot) return;
       // Avoid duplicate bids (by bidId)
       if (!slot.bids.some((b) => b.bidId === bid.bidId)) {
@@ -114,13 +125,14 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
     }
     case 'BID_WON': {
       const { adUnitCode, winningBid } = d as { adUnitCode: string; winningBid: Bid };
-      const slot = getOrCreateSlot(tabId, adUnitCode);
+      const slot = getOrCreateSlot(tabId, adUnitCode, winningBid.auctionId || auctionId);
       if (slot) slot.winningBid = winningBid;
       break;
     }
     case 'GPT_RENDER_ENDED': {
       const adUnitPath = (d.adUnitPath as string) || '';
       const divId = (d.divId as string) || '';
+      const gptAuctionId = (d.auctionId as string) || '';
       const isEmpty = !!d.isEmpty;
       const isBackfill = !!d.isBackfill;
       const creativeId = (d.creativeId as number | null) ?? null;
@@ -135,7 +147,9 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
 
       // Use divId as the slot key — this matches Prebid's adUnitCode
       const slotKey = divId || adUnitPath.split('/').pop() || adUnitPath;
-      const slot = getOrCreateSlot(tabId, slotKey, sizeArr);
+      // Use the GPT-correlated auctionId
+      const gptSlotAuctionId = gptAuctionId || auctionId;
+      const slot = getOrCreateSlot(tabId, slotKey, gptSlotAuctionId, sizeArr);
       if (!slot) return;
 
       if (divId) slot.divId = divId;
@@ -158,7 +172,7 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
           height: Array.isArray(size) ? size[1] : 0,
           ad: '',
           creativeId: String(sourceAgnosticCreativeId ?? creativeId ?? ''),
-          auctionId: slot.bids[0]?.auctionId ?? '',
+          auctionId: slot.auctionId,
           adUnitCode: slotKey,
         };
       }

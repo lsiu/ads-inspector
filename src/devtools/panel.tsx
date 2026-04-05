@@ -5,6 +5,7 @@ import type { Bid, GptInfo, AdSlot } from '../shared/types';
 interface AuctionEvent {
   id: string;
   slotCode: string;
+  auctionId: string;
   timestamp: number;
   bids: Bid[];
   winningBid?: Bid;
@@ -13,26 +14,38 @@ interface AuctionEvent {
 }
 
 const Panel: React.FC = () => {
-  const [auctionEvents, setAuctionEvents] = useState<AuctionEvent[]>([]);
+  // Map<adUnitCode, AuctionEvent[]> — groups auctions by slot
+  const [auctionEvents, setAuctionEvents] = useState<Map<string, AuctionEvent[]>>(new Map());
   const [selectedAuction, setSelectedAuction] = useState<AuctionEvent | null>(null);
   const portRef = useRef<chrome.runtime.Port | null>(null);
   const [isDirectoryConfigured, setIsDirectoryConfigured] = useState<boolean>(false);
   const [directoryName, setDirectoryName] = useState<string | null>(null);
 
-  // Accumulate slots from an AUCTION_DATA_UPDATE snapshot
+  // Accumulate slots from an AUCTION_DATA_UPDATE snapshot, grouped by adUnitCode
   const applySnapshot = useCallback((adSlots: AdSlot[]) => {
-    const events: AuctionEvent[] = adSlots.map((slot) => ({
-      id: `${slot.slotCode}-${slot.bids[0]?.auctionId || 'unknown'}`,
-      slotCode: slot.slotCode,
-      timestamp: Date.now(),
-      bids: slot.bids,
-      winningBid: slot.winningBid,
-      sizes: slot.sizes,
-      gpt: slot.gpt,
-    }));
+    const grouped = new Map<string, AuctionEvent[]>();
+    adSlots.forEach((slot) => {
+      const key = slot.slotCode;
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push({
+        id: `${slot.slotCode}-${slot.auctionId || 'unknown'}`,
+        slotCode: slot.slotCode,
+        auctionId: slot.auctionId,
+        timestamp: Date.now(),
+        bids: slot.bids,
+        winningBid: slot.winningBid,
+        sizes: slot.sizes,
+        gpt: slot.gpt,
+      });
+    });
 
-    events.sort((a, b) => b.timestamp - a.timestamp);
-    setAuctionEvents(events);
+    // Sort each group by timestamp (newest first)
+    grouped.forEach((events) => {
+      events.sort((a, b) => b.timestamp - a.timestamp);
+    });
+    setAuctionEvents(grouped);
   }, []);
 
   useEffect(() => {
@@ -170,6 +183,9 @@ const Panel: React.FC = () => {
                 <h2 className="text-xl font-bold text-white mb-2">
                   {selectedAuction.slotCode}
                 </h2>
+                <p className="text-xs text-gray-500 font-mono truncate" title={selectedAuction.auctionId}>
+                  {selectedAuction.auctionId || 'unknown'}
+                </p>
                 <p className="text-sm text-gray-400">
                   Auction Time: {new Date(selectedAuction.timestamp).toLocaleTimeString()}
                 </p>
