@@ -1,6 +1,7 @@
 // Background service worker - handles message routing, state accumulation, and data persistence
 
-import { initStorage, isDirectoryConfigured, writeAuctionData, getDirectoryName, clearDirectoryConfig } from './storage';
+import { initStorage, isDirectoryConfigured, writeAuctionFile, getDirectoryName, clearDirectoryConfig } from './storage';
+import type { AuctionFile } from './storage';
 import type {
   AuctionEventType,
   AuctionEventMessage,
@@ -10,10 +11,11 @@ import type {
   AdAuctionData,
 } from '../shared/types';
 
-// Re-use shared types from types.ts — no local interface definitions needed
-
-// Store accumulated auction state by tab ID
+// Store accumulated auction state by tab ID (for Panel snapshots)
 const tabData: Map<number, AdAuctionData> = new Map();
+
+// Accumulated events per auction (for per-auction file writes)
+const auctionFiles: Map<string, AuctionFile> = new Map();
 
 // DevTools panel ports keyed by tab ID
 const devToolsPorts: Map<number, chrome.runtime.Port> = new Map();
@@ -56,6 +58,42 @@ function getOrCreateSlot(tabId: number, adUnitCode: string, sizes: number[][] = 
 }
 
 function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
+  // Extract auctionId from the event data (present on most auction events)
+  const d = message.data as Record<string, unknown>;
+  const auctionId = (d.auctionId as string) || '';
+
+  // ── Accumulate per-auction events for file writing ──
+  if (auctionId) {
+    let af = auctionFiles.get(auctionId);
+    if (!af) {
+      af = {
+        pageUrl: message.pageUrl,
+        auctionId,
+        timestamp: message.timestamp,
+        events: [],
+        savedAt: Date.now(),
+      };
+      auctionFiles.set(auctionId, af);
+    }
+    af.events.push({
+      type: message.type,
+      timestamp: message.timestamp,
+      data: message.data,
+    });
+    // Write the auction file on every event
+    writeAuctionFile(af).then(() => {
+      isDirectoryConfigured().then((configured) => {
+        if (!configured && !directoryCheckRequested) {
+          directoryCheckRequested = true;
+          devToolsPorts.forEach((port) => {
+            port.postMessage({ type: 'DIRECTORY_NOT_CONFIGURED' });
+          });
+        }
+      });
+    });
+  }
+
+  // ── Accumulate per-tab state for Panel snapshots ──
   if (!tabData.has(tabId)) {
     tabData.set(tabId, { pageUrl: message.pageUrl, timestamp: message.timestamp, adSlots: [] });
   }
@@ -65,7 +103,7 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
 
   switch (message.type) {
     case 'BID_RESPONSE': {
-      const { adUnitCode, sizes, bid } = message.data as { adUnitCode: string; sizes: number[][]; bid: Bid };
+      const { adUnitCode, sizes, bid } = d as { adUnitCode: string; sizes: number[][]; bid: Bid };
       const slot = getOrCreateSlot(tabId, adUnitCode, sizes);
       if (!slot) return;
       // Avoid duplicate bids (by bidId)
@@ -75,13 +113,12 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
       break;
     }
     case 'BID_WON': {
-      const { adUnitCode, winningBid } = message.data as { adUnitCode: string; winningBid: Bid };
+      const { adUnitCode, winningBid } = d as { adUnitCode: string; winningBid: Bid };
       const slot = getOrCreateSlot(tabId, adUnitCode);
       if (slot) slot.winningBid = winningBid;
       break;
     }
     case 'GPT_RENDER_ENDED': {
-      const d = message.data as Record<string, unknown>;
       const adUnitPath = (d.adUnitPath as string) || '';
       const divId = (d.divId as string) || '';
       const isEmpty = !!d.isEmpty;
@@ -131,7 +168,7 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
     case 'BID_REQUESTED':
     case 'AUCTION_END':
     case 'GTM_EVENT':
-      // These event types are written to disk but don't change accumulated state
+      // These event types accumulate for file writing but don't change slot state
       break;
   }
 }
@@ -186,7 +223,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         data: message.payload,
       };
 
-      // Accumulate state
+      // Accumulate state and write to per-auction file
       handleAuctionEvent(tabId, eventMessage);
 
       // Broadcast accumulated state to DevTools panels
@@ -196,24 +233,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           port.postMessage({ type: 'AUCTION_DATA_UPDATE', payload: snapshot });
         });
       }
-
-      // Write the individual event line to NDJSON
-      writeAuctionData({
-        pageUrl: message.payload.pageUrl,
-        timestamp: message.payload.timestamp,
-        type: message.type,
-        data: message.payload,
-      }).then(() => {
-        // Check directory status after write
-        isDirectoryConfigured().then((configured) => {
-          if (!configured && !directoryCheckRequested) {
-            directoryCheckRequested = true;
-            devToolsPorts.forEach((port) => {
-              port.postMessage({ type: 'DIRECTORY_NOT_CONFIGURED' });
-            });
-          }
-        });
-      });
     }
   }
 
@@ -261,6 +280,7 @@ chrome.runtime.onConnect.addListener((port) => {
       }
       if (message.type === 'CLEAR_DATA') {
         tabData.clear();
+        auctionFiles.clear();
         port.postMessage({ type: 'AUCTION_DATA_UPDATE', payload: { pageUrl: '', timestamp: Date.now(), adSlots: [] } });
       }
       if (message.type === 'OPEN_OPTIONS') {

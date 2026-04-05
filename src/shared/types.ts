@@ -125,12 +125,3 @@ export interface AdAuctionData {
   timestamp: number;
   adSlots: AdSlot[];
 }
-
-// NDJSON event line written to disk
-export interface NDJSONEvent {
-  pageUrl: string;
-  timestamp: number;
-  type: string;
-  data: Record<string, unknown>;
-  savedAt?: number;
-}

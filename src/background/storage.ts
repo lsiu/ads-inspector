@@ -1,7 +1,15 @@
 // Storage module - handles persistence to file system using IndexedDB for handle storage
 
 import { getDirectoryHandle, getDirectoryName as getIdbName, storeDirectoryHandle, clearDirectoryHandle } from './idb';
-import type { NDJSONEvent } from '../shared/types';
+
+/** A complete auction file written to disk */
+export interface AuctionFile {
+  pageUrl: string;
+  auctionId: string;
+  timestamp: number;
+  events: { type: string; timestamp: number; data: Record<string, unknown> }[];
+  savedAt: number;
+}
 
 // In-memory directory handle (retrieved from IndexedDB lazily)
 let directoryHandle: FileSystemDirectoryHandle | null = null;
@@ -13,9 +21,9 @@ const ensureInitialized = async (): Promise<void> => {
   if (isLoading || directoryHandle !== null) {
     return;
   }
-  
+
   isLoading = true;
-  
+
   try {
     const handle = await getDirectoryHandle();
     const name = await getIdbName();
@@ -36,7 +44,7 @@ const ensureInitialized = async (): Promise<void> => {
 
 // Initialize storage (for backward compatibility, but does nothing now)
 export const initStorage = async (): Promise<void> => {
-  // Lazy initialization - nothing to do here
+  // Lazy initialization — nothing to do here
   console.log('[Ad Inspector] Storage module ready (lazy initialization enabled)');
 };
 
@@ -70,19 +78,22 @@ export const getDirectoryName = async (): Promise<string | null> => {
   return directoryName;
 };
 
-// Get the filename for the current hour
-const getHourlyFilename = (): string => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const hour = String(now.getHours()).padStart(2, '0');
-
-  return `auctions-${year}-${month}-${day}-${hour}.json`;
+// Build a per-auction filename: auction-YYYYMMDD-HHmmss-<auctionId>.json
+const getAuctionFilename = (timestamp: number, auctionId: string): string => {
+  const d = new Date(timestamp);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hour = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  const sec = String(d.getSeconds()).padStart(2, '0');
+  // Truncate auctionId to keep filenames reasonable
+  const shortId = auctionId.length > 12 ? auctionId.slice(0, 12) : auctionId;
+  return `auction-${year}${month}${day}-${hour}${min}${sec}-${shortId}.json`;
 };
 
-// Write auction data to file (NDJSON — one event per line)
-export const writeAuctionData = async (data: NDJSONEvent): Promise<void> => {
+// Write a complete auction file to disk (one JSON file per auction)
+export const writeAuctionFile = async (data: AuctionFile): Promise<void> => {
   // Ensure initialized before checking handle
   await ensureInitialized();
 
@@ -91,36 +102,15 @@ export const writeAuctionData = async (data: NDJSONEvent): Promise<void> => {
   }
 
   try {
-    const filename = getHourlyFilename();
-    const dataLine = JSON.stringify({ ...data, savedAt: Date.now() }) + '\n';
+    const filename = getAuctionFilename(data.timestamp, data.auctionId);
+    const writable = await directoryHandle.getFileHandle(filename, { create: true });
+    const stream = await writable.createWritable();
+    await stream.write(JSON.stringify(data, null, 2));
+    await stream.close();
 
-    let fileHandle: FileSystemFileHandle;
-    try {
-      // Try to get the existing file
-      fileHandle = await directoryHandle.getFileHandle(filename);
-    } catch (error) {
-      // File doesn't exist, create it
-      fileHandle = await directoryHandle.getFileHandle(filename, { create: true });
-    }
-
-    // Read existing content first
-    let existingContent = '';
-    try {
-      const file = await fileHandle.getFile();
-      existingContent = await file.text();
-    } catch (error) {
-      // File is empty or unreadable, start fresh
-      existingContent = '';
-    }
-
-    // Append new data and write back
-    const writable = await fileHandle.createWritable();
-    await writable.write(existingContent + dataLine);
-    await writable.close();
-
-    console.log('[Ad Inspector] Data written to:', filename);
+    console.log('[Ad Inspector] Auction written to:', filename);
   } catch (error: any) {
-    console.error('[Ad Inspector] Error writing data:', error);
+    console.error('[Ad Inspector] Error writing auction file:', error);
   }
 };
 

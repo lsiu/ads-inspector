@@ -159,7 +159,7 @@ const setupGtpListener = () => {
       const adUnitPath = slot.getAdUnitPath();
       const divId = slot.getSlotElementId();
 
-      log('GPT slot render ended:', {
+      const postData = {
         adUnitPath,
         divId,
         creativeId: event.creativeId,
@@ -171,21 +171,10 @@ const setupGtpListener = () => {
         size: event.size,
         sourceAgnosticCreativeId: event.sourceAgnosticCreativeId,
         sourceAgnosticLineItemId: event.sourceAgnosticLineItemId,
-      });
+      };
+      log('GPT slot render ended:', postData, event);
 
-      postEvent('GPT_RENDER_ENDED', {
-        adUnitPath,
-        divId,
-        creativeId: event.creativeId,
-        lineItemId: event.lineItemId,
-        advertiserId: event.advertiserId,
-        campaignId: event.campaignId,
-        isEmpty: event.isEmpty,
-        isBackfill: event.isBackfill,
-        size: event.size,
-        sourceAgnosticCreativeId: event.sourceAgnosticCreativeId,
-        sourceAgnosticLineItemId: event.sourceAgnosticLineItemId,
-      });
+      postEvent('GPT_RENDER_ENDED', postData);
     });
   });
 };
