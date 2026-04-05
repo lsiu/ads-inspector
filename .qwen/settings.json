@@ -9,7 +9,9 @@
       "Bash(findstr *)",
       "Bash(select-string *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "WebSearch",
+      "WebFetch(developers.google.com)"
     ]
   },
   "$version": 3

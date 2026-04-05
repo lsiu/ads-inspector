@@ -15,12 +15,28 @@ interface Bid {
   adUnitCode: string;
 }
 
+/** GPT rendering metadata attached to a slot */
+interface GptInfo {
+  creativeId: number | null;
+  sourceAgnosticCreativeId: number | null;
+  lineItemId: number | null;
+  sourceAgnosticLineItemId: number | null;
+  advertiserId: number | null;
+  campaignId: number | null;
+  isEmpty: boolean;
+  isBackfill: boolean;
+  size: number[] | string | null;
+  divId: string;
+  adUnitPath: string;
+}
+
 interface AdSlot {
   slotCode: string;
   divId: string;
   sizes: number[][];
   bids: Bid[];
   winningBid?: Bid;
+  gpt?: GptInfo;
 }
 
 interface AdAuctionData {
@@ -60,19 +76,32 @@ initStorage().then(() => {
   console.log('[Ad Inspector] Background service worker initialized');
 });
 
-function getOrCreateSlot(tabId: number, adUnitCode: string, sizes: number[][] = []): AdSlot {
+function getOrCreateSlot(tabId: number, adUnitCode: string, sizes: number[][] = []): AdSlot | undefined {
   const data = tabData.get(tabId);
-  if (!data) return { slotCode: adUnitCode, divId: '', sizes, bids: [] };
+  if (!data) return undefined;
 
+  // Try exact match first
   let slot = data.adSlots.find((s) => s.slotCode === adUnitCode);
-  if (!slot) {
-    slot = { slotCode: adUnitCode, divId: '', sizes, bids: [] };
-    data.adSlots.push(slot);
+  if (slot) {
+    if (sizes.length > 0 && (!slot.sizes || slot.sizes.length === 0)) {
+      slot.sizes = sizes;
+    }
+    return slot;
   }
-  // Update sizes if we got better info
-  if (sizes.length > 0 && (!slot.sizes || slot.sizes.length === 0)) {
-    slot.sizes = sizes;
+
+  // Try matching by GPT adUnitPath suffix (e.g., "/1234/ad_unit" → "ad_unit")
+  const shortName = adUnitCode.split('/').pop() || adUnitCode;
+  slot = data.adSlots.find((s) => s.slotCode === shortName || s.gpt?.adUnitPath === adUnitCode);
+  if (slot) {
+    if (sizes.length > 0 && (!slot.sizes || slot.sizes.length === 0)) {
+      slot.sizes = sizes;
+    }
+    return slot;
   }
+
+  // Create new slot
+  slot = { slotCode: adUnitCode, divId: '', sizes, bids: [] };
+  data.adSlots.push(slot);
   return slot;
 }
 
@@ -88,6 +117,7 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
     case 'BID_RESPONSE': {
       const { adUnitCode, sizes, bid } = message.data as { adUnitCode: string; sizes: number[][]; bid: Bid };
       const slot = getOrCreateSlot(tabId, adUnitCode, sizes);
+      if (!slot) return;
       // Avoid duplicate bids (by bidId)
       if (!slot.bids.some((b) => b.bidId === bid.bidId)) {
         slot.bids.push(bid);
@@ -97,14 +127,59 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
     case 'BID_WON': {
       const { adUnitCode, winningBid } = message.data as { adUnitCode: string; winningBid: Bid };
       const slot = getOrCreateSlot(tabId, adUnitCode);
-      slot.winningBid = winningBid;
+      if (slot) slot.winningBid = winningBid;
+      break;
+    }
+    case 'GPT_RENDER_ENDED': {
+      const d = message.data as Record<string, unknown>;
+      const adUnitPath = (d.adUnitPath as string) || '';
+      const divId = (d.divId as string) || '';
+      const isEmpty = !!d.isEmpty;
+      const isBackfill = !!d.isBackfill;
+      const creativeId = (d.creativeId as number | null) ?? null;
+      const sourceAgnosticCreativeId = (d.sourceAgnosticCreativeId as number | null) ?? null;
+      const lineItemId = (d.lineItemId as number | null) ?? null;
+      const sourceAgnosticLineItemId = (d.sourceAgnosticLineItemId as number | null) ?? null;
+      const advertiserId = (d.advertiserId as number | null) ?? null;
+      const campaignId = (d.campaignId as number | null) ?? null;
+      const sizeRaw = d.size as number[] | string | null;
+      const size = Array.isArray(sizeRaw) ? sizeRaw : null;
+      const sizeArr: number[][] = size ? [size] : [];
+
+      // Find or create slot by adUnitPath
+      const slot = getOrCreateSlot(tabId, adUnitPath, sizeArr);
+      if (!slot) return;
+
+      slot.divId = divId || slot.divId;
+
+      const gptInfo: GptInfo = {
+        creativeId, sourceAgnosticCreativeId, lineItemId, sourceAgnosticLineItemId,
+        advertiserId, campaignId, isEmpty, isBackfill, size, divId, adUnitPath,
+      };
+      slot.gpt = gptInfo;
+
+      // If slot has Prebid bids but no winningBid, GPT served a direct/backfill ad
+      // Create a synthetic winning bid so the UI has something to show
+      if (slot.bids.length > 0 && !slot.winningBid && !isEmpty) {
+        slot.winningBid = {
+          bidder: isBackfill ? 'Google Ad Manager (Backfill)' : 'Google Ad Manager (Direct)',
+          bidId: `gpt-${sourceAgnosticCreativeId ?? creativeId ?? 'unknown'}`,
+          cpm: 0,
+          currency: 'USD',
+          width: Array.isArray(size) ? size[0] : 0,
+          height: Array.isArray(size) ? size[1] : 0,
+          ad: '',
+          creativeId: String(sourceAgnosticCreativeId ?? creativeId ?? ''),
+          auctionId: slot.bids[0]?.auctionId ?? '',
+          adUnitCode: adUnitPath,
+        };
+      }
       break;
     }
     case 'AUCTION_INIT':
     case 'BID_REQUESTED':
     case 'AUCTION_END':
     case 'GTM_EVENT':
-    case 'GPT_RENDER_ENDED':
       // These event types are written to disk but don't change accumulated state
       break;
   }

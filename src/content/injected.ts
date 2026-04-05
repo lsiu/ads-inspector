@@ -160,20 +160,37 @@ const setupGtpListener = () => {
   window.googletag = window.googletag || { cmd: [] };
 
   googletag.cmd.push(() => {
-    googletag.pubads().addEventListener('slotRenderEnded', (event: GPTEvent) => {
+    googletag.pubads().addEventListener('slotRenderEnded', (event: googletag.events.SlotRenderEndedEvent) => {
+      const slot = event.slot;
+      const adUnitPath = slot.getAdUnitPath();
+      const divId = slot.getSlotElementId();
+
       console.log('[Ad Inspector] GPT slot render ended:', {
-        'Slot ID': event.slot.getSlotElementId(),
-        'Source': event.serviceName,
-        'Line Item ID': event.lineItemId,
-        'Is Empty?': event.isEmpty,
-        'Advertiser ID': event.advertiserId,
-      });
-      postEvent('GPT_RENDER_ENDED', {
-        slotId: event.slot.getSlotElementId(),
-        serviceName: event.serviceName,
+        adUnitPath,
+        divId,
+        creativeId: event.creativeId,
         lineItemId: event.lineItemId,
-        isEmpty: event.isEmpty,
         advertiserId: event.advertiserId,
+        campaignId: event.campaignId,
+        isEmpty: event.isEmpty,
+        isBackfill: event.isBackfill,
+        size: event.size,
+        sourceAgnosticCreativeId: event.sourceAgnosticCreativeId,
+        sourceAgnosticLineItemId: event.sourceAgnosticLineItemId,
+      });
+
+      postEvent('GPT_RENDER_ENDED', {
+        adUnitPath,
+        divId,
+        creativeId: event.creativeId,
+        lineItemId: event.lineItemId,
+        advertiserId: event.advertiserId,
+        campaignId: event.campaignId,
+        isEmpty: event.isEmpty,
+        isBackfill: event.isBackfill,
+        size: event.size,
+        sourceAgnosticCreativeId: event.sourceAgnosticCreativeId,
+        sourceAgnosticLineItemId: event.sourceAgnosticLineItemId,
       });
     });
   });

@@ -14,12 +14,27 @@ interface Bid {
   adUnitCode: string;
 }
 
+interface GptInfo {
+  creativeId: number | null;
+  sourceAgnosticCreativeId: number | null;
+  lineItemId: number | null;
+  sourceAgnosticLineItemId: number | null;
+  advertiserId: number | null;
+  campaignId: number | null;
+  isEmpty: boolean;
+  isBackfill: boolean;
+  size: number[] | string | null;
+  divId: string;
+  adUnitPath: string;
+}
+
 interface AdSlot {
   slotCode: string;
   divId: string;
   sizes: number[][];
   bids: Bid[];
   winningBid?: Bid;
+  gpt?: GptInfo;
 }
 
 interface AuctionEvent {
@@ -29,6 +44,7 @@ interface AuctionEvent {
   bids: Bid[];
   winningBid?: Bid;
   sizes: number[][];
+  gpt?: GptInfo;
 }
 
 const Panel: React.FC = () => {
@@ -47,6 +63,7 @@ const Panel: React.FC = () => {
       bids: slot.bids,
       winningBid: slot.winningBid,
       sizes: slot.sizes,
+      gpt: slot.gpt,
     }));
 
     events.sort((a, b) => b.timestamp - a.timestamp);
@@ -197,9 +214,16 @@ const Panel: React.FC = () => {
 
               {/* Winning Bid */}
               {selectedAuction.winningBid && (
-                <div className="bg-green-900/30 border border-green-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-green-400 mb-2">
-                    Winning Bid
+                <div className={`rounded-lg p-4 border ${
+                  selectedAuction.winningBid.bidder.includes('Google Ad Manager')
+                    ? 'bg-blue-900/30 border-blue-700'
+                    : 'bg-green-900/30 border-green-700'
+                }`}>
+                  <h3 className="text-lg font-semibold mb-2">
+                    <span className={selectedAuction.winningBid.bidder.includes('Google Ad Manager') ? 'text-blue-400' : 'text-green-400'}>
+                      {selectedAuction.winningBid.bidder.includes('Google Ad Manager') ? '🏢 ' : '🏆 '}
+                      {selectedAuction.winningBid.bidder}
+                    </span>
                   </h3>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
@@ -209,7 +233,9 @@ const Panel: React.FC = () => {
                     <div>
                       <span className="text-gray-400">CPM:</span>
                       <span className="ml-2 text-green-400 font-semibold">
-                        ${selectedAuction.winningBid.cpm.toFixed(2)}
+                        {selectedAuction.winningBid.cpm > 0
+                          ? `$${selectedAuction.winningBid.cpm.toFixed(2)}`
+                          : 'N/A (direct/backfill)'}
                       </span>
                     </div>
                     <div>
@@ -225,6 +251,51 @@ const Panel: React.FC = () => {
                       </span>
                     </div>
                   </div>
+
+                  {/* GPT Metadata */}
+                  {selectedAuction.gpt && (
+                    <div className="mt-3 pt-3 border-t border-gray-700">
+                      <h4 className="text-sm font-semibold text-gray-300 mb-2">GPT Render Info</h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-gray-400">Advertiser ID:</span>
+                          <span className="ml-2 text-white">
+                            {selectedAuction.gpt.advertiserId ?? 'N/A'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Campaign ID:</span>
+                          <span className="ml-2 text-white">
+                            {selectedAuction.gpt.campaignId ?? 'N/A'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Line Item ID:</span>
+                          <span className="ml-2 text-white">
+                            {selectedAuction.gpt.lineItemId ?? selectedAuction.gpt.sourceAgnosticLineItemId ?? 'N/A'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">GPT Creative ID:</span>
+                          <span className="ml-2 text-white">
+                            {selectedAuction.gpt.creativeId ?? selectedAuction.gpt.sourceAgnosticCreativeId ?? 'N/A'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Backfill:</span>
+                          <span className="ml-2 text-white">
+                            {selectedAuction.gpt.isBackfill ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Div ID:</span>
+                          <span className="ml-2 text-white font-mono text-xs">
+                            {selectedAuction.gpt.divId || 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -277,7 +348,7 @@ const Panel: React.FC = () => {
               </div>
 
               {/* Creative Preview */}
-              {selectedAuction.winningBid?.ad && (
+              {selectedAuction.winningBid?.ad ? (
                 <div>
                   <h3 className="text-lg font-semibold text-white mb-2">
                     Creative Preview
@@ -289,7 +360,19 @@ const Panel: React.FC = () => {
                     />
                   </div>
                 </div>
-              )}
+              ) : selectedAuction.gpt && !selectedAuction.winningBid?.ad ? (
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-2">
+                    Creative Preview
+                  </h3>
+                  <div className="bg-gray-800 rounded-lg p-4 text-sm text-gray-400">
+                    <p>
+                      Creative HTML is not accessible for GPT-rendered ads.
+                      Ads are rendered in cross-origin iframes via SafeFrame.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="flex items-center justify-center h-full text-gray-500">
