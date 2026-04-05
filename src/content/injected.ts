@@ -33,22 +33,24 @@ const waitForPbjs = setInterval(() => {
 
     // Listen to auction init event
     pbjs.onEvent('auctionInit', (data: any) => {
-      log('Auction initialized:', data.auctionId, data);
-      postEvent('AUCTION_INIT', {
+      const postData = {
         auctionId: data.auctionId,
         timestamp: data.timestamp,
         adUnitCodes: data.adUnitCodes || [],
-      });
+      };
+      log('Auction initialized:', data.auctionId, postData, data);
+      postEvent('AUCTION_INIT', postData);
     });
 
     // Listen to bid requested
     pbjs.onEvent('bidRequested', (data: any) => {
-      log('Bid requested:', data);
-      postEvent('BID_REQUESTED', {
+      const postData = {
         bidder: data.bidderCode,
         adUnitCode: data.adUnitCode,
         sizes: data.sizes || [],
-      });
+      };
+      log('Bid requested:', postData, data);
+      postEvent('BID_REQUESTED', postData);
     });
 
     // Listen to bid response
@@ -65,14 +67,14 @@ const waitForPbjs = setInterval(() => {
         auctionId: data.auctionId || '',
         adUnitCode: data.adUnitCode,
       };
-
-      log('Bid received:', bid, data);
-      postEvent('BID_RESPONSE', {
+      const postData = {
         auctionId: data.auctionId || '',
         adUnitCode: data.adUnitCode,
         sizes: data.sizes || [],
         bid,
-      });
+      };
+      log('Bid received:', postData, data);
+      postEvent('BID_RESPONSE', postData);
     });
 
     // Listen to bid won
@@ -89,23 +91,25 @@ const waitForPbjs = setInterval(() => {
         auctionId: data.auctionId || '',
         adUnitCode: data.adUnitCode,
       };
-
-      log('Bid won:', winningBid, data);
-      postEvent('BID_WON', {
+      
+      const postData = {
         auctionId: data.auctionId || '',
         adUnitCode: data.adUnitCode,
         winningBid,
-      });
+      };
+      log('Bid won:', postData, data);
+      postEvent('BID_WON', postData);
     });
 
     // Listen to auction end
     pbjs.onEvent('auctionEnd', (data: any) => {
-      log('Auction ended:', data.auctionId);
-      postEvent('AUCTION_END', {
+      const postData = {
         auctionId: data.auctionId,
         adUnitCode: data.adUnitCode,
         bidsReceived: data.bidsReceived?.length || 0,
-      });
+      };
+      log('Auction ended:', postData, data);
+      postEvent('AUCTION_END', postData);
     });
 
     log('Prebid.js listeners attached');
