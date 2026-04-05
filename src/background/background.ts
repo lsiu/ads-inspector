@@ -96,11 +96,12 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
       const size = Array.isArray(sizeRaw) ? sizeRaw : null;
       const sizeArr: number[][] = size ? [size] : [];
 
-      // Find or create slot by adUnitPath
-      const slot = getOrCreateSlot(tabId, adUnitPath, sizeArr);
+      // Use divId as the slot key — this matches Prebid's adUnitCode
+      const slotKey = divId || adUnitPath.split('/').pop() || adUnitPath;
+      const slot = getOrCreateSlot(tabId, slotKey, sizeArr);
       if (!slot) return;
 
-      slot.divId = divId || slot.divId;
+      if (divId) slot.divId = divId;
 
       const gptInfo: GptInfo = {
         creativeId, sourceAgnosticCreativeId, lineItemId, sourceAgnosticLineItemId,
@@ -121,7 +122,7 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
           ad: '',
           creativeId: String(sourceAgnosticCreativeId ?? creativeId ?? ''),
           auctionId: slot.bids[0]?.auctionId ?? '',
-          adUnitCode: adUnitPath,
+          adUnitCode: slotKey,
         };
       }
       break;
