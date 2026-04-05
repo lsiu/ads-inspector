@@ -12,7 +12,7 @@ console.log('[Ad Inspector] Injected script tag added to page');
 // Listen for messages FROM the page and send them TO the background
 window.addEventListener('message', (event) => {
   if (event.data && event.data.source === 'auction-inspector') {
-    console.log('[Ad Inspector] Received message from page:', event.data.type);
+    console.log('[Ad Inspector] Received message from page:', event.data.type, event);
     
     chrome.runtime.sendMessage({
       type: event.data.type,
