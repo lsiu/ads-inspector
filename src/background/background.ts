@@ -1,66 +1,16 @@
 // Background service worker - handles message routing, state accumulation, and data persistence
 
 import { initStorage, isDirectoryConfigured, writeAuctionData, getDirectoryName, clearDirectoryConfig } from './storage';
+import type {
+  AuctionEventType,
+  AuctionEventMessage,
+  Bid,
+  GptInfo,
+  AdSlot,
+  AdAuctionData,
+} from '../shared/types';
 
-interface Bid {
-  bidder: string;
-  bidId: string;
-  cpm: number;
-  currency: string;
-  width: number;
-  height: number;
-  ad: string;
-  creativeId?: string;
-  auctionId: string;
-  adUnitCode: string;
-}
-
-/** GPT rendering metadata attached to a slot */
-interface GptInfo {
-  creativeId: number | null;
-  sourceAgnosticCreativeId: number | null;
-  lineItemId: number | null;
-  sourceAgnosticLineItemId: number | null;
-  advertiserId: number | null;
-  campaignId: number | null;
-  isEmpty: boolean;
-  isBackfill: boolean;
-  size: number[] | string | null;
-  divId: string;
-  adUnitPath: string;
-}
-
-interface AdSlot {
-  slotCode: string;
-  divId: string;
-  sizes: number[][];
-  bids: Bid[];
-  winningBid?: Bid;
-  gpt?: GptInfo;
-}
-
-interface AdAuctionData {
-  pageUrl: string;
-  timestamp: number;
-  adSlots: AdSlot[];
-}
-
-// NDJSON event types that flow through the system
-type EventType =
-  | 'AUCTION_INIT'
-  | 'BID_REQUESTED'
-  | 'BID_RESPONSE'
-  | 'BID_WON'
-  | 'AUCTION_END'
-  | 'GTM_EVENT'
-  | 'GPT_RENDER_ENDED';
-
-interface AuctionEventMessage {
-  pageUrl: string;
-  timestamp: number;
-  type: EventType;
-  data: Record<string, unknown>;
-}
+// Re-use shared types from types.ts — no local interface definitions needed
 
 // Store accumulated auction state by tab ID
 const tabData: Map<number, AdAuctionData> = new Map();
@@ -219,19 +169,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   // All event types from injected script
-  const eventTypes: EventType[] = [
+  const eventTypes: AuctionEventType[] = [
     'AUCTION_INIT', 'BID_REQUESTED', 'BID_RESPONSE', 'BID_WON',
     'AUCTION_END', 'GTM_EVENT', 'GPT_RENDER_ENDED',
   ];
 
-  if (eventTypes.includes(message.type as EventType)) {
+  if (eventTypes.includes(message.type as AuctionEventType)) {
     const tabId = sender.tab?.id;
 
     if (tabId !== undefined) {
       const eventMessage: AuctionEventMessage = {
         pageUrl: message.payload.pageUrl,
         timestamp: message.payload.timestamp,
-        type: message.type as EventType,
+        type: message.type as AuctionEventType,
         data: message.payload,
       };
 

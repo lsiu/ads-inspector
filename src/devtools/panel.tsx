@@ -1,41 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import AuctionsList from './components/AuctionsList';
-
-interface Bid {
-  bidder: string;
-  bidId: string;
-  cpm: number;
-  currency: string;
-  width: number;
-  height: number;
-  ad: string;
-  creativeId?: string;
-  auctionId: string;
-  adUnitCode: string;
-}
-
-interface GptInfo {
-  creativeId: number | null;
-  sourceAgnosticCreativeId: number | null;
-  lineItemId: number | null;
-  sourceAgnosticLineItemId: number | null;
-  advertiserId: number | null;
-  campaignId: number | null;
-  isEmpty: boolean;
-  isBackfill: boolean;
-  size: number[] | string | null;
-  divId: string;
-  adUnitPath: string;
-}
-
-interface AdSlot {
-  slotCode: string;
-  divId: string;
-  sizes: number[][];
-  bids: Bid[];
-  winningBid?: Bid;
-  gpt?: GptInfo;
-}
+import type { Bid, GptInfo, AdSlot } from '../shared/types';
 
 interface AuctionEvent {
   id: string;

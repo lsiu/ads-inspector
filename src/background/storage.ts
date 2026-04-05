@@ -1,46 +1,7 @@
 // Storage module - handles persistence to file system using IndexedDB for handle storage
 
 import { getDirectoryHandle, getDirectoryName as getIdbName, storeDirectoryHandle, clearDirectoryHandle } from './idb';
-
-interface Bid {
-  bidder: string;
-  bidId: string;
-  cpm: number;
-  currency: string;
-  width: number;
-  height: number;
-  ad: string;
-  creativeId?: string;
-  auctionId: string;
-  adUnitCode: string;
-}
-
-interface AdSlot {
-  slotCode: string;
-  divId: string;
-  sizes: number[][];
-  bids: Bid[];
-  winningBid?: Bid;
-}
-
-// NDJSON event line — any event from the auction pipeline
-interface AuctionEvent {
-  pageUrl: string;
-  timestamp: number;
-  type: string;
-  data: Record<string, unknown>;
-  savedAt?: number;
-}
-
-// Legacy format (kept for backward compat with any existing files)
-interface LegacyAuctionData {
-  pageUrl: string;
-  timestamp: number;
-  adSlots: AdSlot[];
-  savedAt?: number;
-}
-
-type WritableData = AuctionEvent | LegacyAuctionData;
+import type { NDJSONEvent } from '../shared/types';
 
 // In-memory directory handle (retrieved from IndexedDB lazily)
 let directoryHandle: FileSystemDirectoryHandle | null = null;
@@ -121,7 +82,7 @@ const getHourlyFilename = (): string => {
 };
 
 // Write auction data to file (NDJSON — one event per line)
-export const writeAuctionData = async (data: WritableData): Promise<void> => {
+export const writeAuctionData = async (data: NDJSONEvent): Promise<void> => {
   // Ensure initialized before checking handle
   await ensureInitialized();
 

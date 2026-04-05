@@ -2,20 +2,9 @@
 // This script forwards individual Prebid.js events to the content script via postMessage.
 // No state is accumulated here — each event is sent as-is.
 
-interface BidEvent {
-  bidder: string;
-  bidId: string;
-  cpm: number;
-  currency: string;
-  width: number;
-  height: number;
-  ad: string;
-  creativeId?: string;
-  auctionId: string;
-  adUnitCode: string;
-}
+import type { AuctionEventType, Bid } from '../shared/types';
 
-function postEvent(type: string, payload: Record<string, unknown>) {
+function postEvent(type: AuctionEventType, payload: Record<string, unknown>) {
   window.postMessage({
     source: 'auction-inspector',
     type,
@@ -59,7 +48,7 @@ const waitForPbjs = setInterval(() => {
 
     // Listen to bid response
     pbjs.onEvent('bidResponse', (data: any) => {
-      const bid: BidEvent = {
+      const bid: Bid = {
         bidder: data.bidderCode,
         bidId: data.requestId || data.bidId,
         cpm: data.cpm,
@@ -83,7 +72,7 @@ const waitForPbjs = setInterval(() => {
 
     // Listen to bid won
     pbjs.onEvent('bidWon', (data: any) => {
-      const winningBid: BidEvent = {
+      const winningBid: Bid = {
         bidder: data.bidderCode,
         bidId: data.requestId || data.bidId,
         cpm: data.cpm,
