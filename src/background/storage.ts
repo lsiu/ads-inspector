@@ -2,20 +2,6 @@
 
 import { getDirectoryHandle, getDirectoryName as getIdbName, storeDirectoryHandle, clearDirectoryHandle } from './idb';
 
-interface AdAuctionData {
-  pageUrl: string;
-  timestamp: number;
-  adSlots: AdSlot[];
-}
-
-interface AdSlot {
-  slotCode: string;
-  divId: string;
-  sizes: number[][];
-  bids: Bid[];
-  winningBid?: Bid;
-}
-
 interface Bid {
   bidder: string;
   bidId: string;
@@ -28,6 +14,33 @@ interface Bid {
   auctionId: string;
   adUnitCode: string;
 }
+
+interface AdSlot {
+  slotCode: string;
+  divId: string;
+  sizes: number[][];
+  bids: Bid[];
+  winningBid?: Bid;
+}
+
+// NDJSON event line — any event from the auction pipeline
+interface AuctionEvent {
+  pageUrl: string;
+  timestamp: number;
+  type: string;
+  data: Record<string, unknown>;
+  savedAt?: number;
+}
+
+// Legacy format (kept for backward compat with any existing files)
+interface LegacyAuctionData {
+  pageUrl: string;
+  timestamp: number;
+  adSlots: AdSlot[];
+  savedAt?: number;
+}
+
+type WritableData = AuctionEvent | LegacyAuctionData;
 
 // In-memory directory handle (retrieved from IndexedDB lazily)
 let directoryHandle: FileSystemDirectoryHandle | null = null;
@@ -107,8 +120,8 @@ const getHourlyFilename = (): string => {
   return `auctions-${year}-${month}-${day}-${hour}.json`;
 };
 
-// Write auction data to file
-export const writeAuctionData = async (data: AdAuctionData): Promise<void> => {
+// Write auction data to file (NDJSON — one event per line)
+export const writeAuctionData = async (data: WritableData): Promise<void> => {
   // Ensure initialized before checking handle
   await ensureInitialized();
 

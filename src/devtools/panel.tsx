@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import AuctionsList from './components/AuctionsList';
 
 interface Bid {
@@ -38,9 +38,24 @@ const Panel: React.FC = () => {
   const [isDirectoryConfigured, setIsDirectoryConfigured] = useState<boolean>(false);
   const [directoryName, setDirectoryName] = useState<string | null>(null);
 
+  // Accumulate slots from an AUCTION_DATA_UPDATE snapshot
+  const applySnapshot = useCallback((adSlots: AdSlot[]) => {
+    const events: AuctionEvent[] = adSlots.map((slot) => ({
+      id: `${slot.slotCode}-${slot.bids[0]?.auctionId || 'unknown'}`,
+      slotCode: slot.slotCode,
+      timestamp: Date.now(),
+      bids: slot.bids,
+      winningBid: slot.winningBid,
+      sizes: slot.sizes,
+    }));
+
+    events.sort((a, b) => b.timestamp - a.timestamp);
+    setAuctionEvents(events);
+  }, []);
+
   useEffect(() => {
     console.log('[Panel] Connecting to background...');
-    
+
     // Connect to background service worker
     const connection = chrome.runtime.connect({ name: 'devtools-panel' });
     setPort(connection);
@@ -49,35 +64,19 @@ const Panel: React.FC = () => {
 
     connection.onMessage.addListener((message) => {
       console.log('[Panel] Received message:', message.type);
-      
+
       if (message.type === 'AUCTION_DATA_UPDATE') {
         console.log('[Panel] Updating auction data, slots:', message.payload.adSlots?.length);
-        
-        // Convert adSlots to individual auction events
-        const events: AuctionEvent[] = [];
-        message.payload.adSlots?.forEach((slot: AdSlot) => {
-          // Create an auction event for each slot
-          const event: AuctionEvent = {
-            id: `${slot.slotCode}-${slot.bids[0]?.auctionId || Date.now()}`,
-            slotCode: slot.slotCode,
-            timestamp: message.payload.timestamp,
-            bids: slot.bids,
-            winningBid: slot.winningBid,
-            sizes: slot.sizes,
-          };
-          events.push(event);
-        });
-        
-        // Sort by timestamp (newest first)
-        events.sort((a, b) => b.timestamp - a.timestamp);
-        setAuctionEvents(events);
+
+        // Background sends a full snapshot of accumulated slots
+        applySnapshot(message.payload.adSlots || []);
       }
-      
+
       if (message.type === 'DIRECTORY_STATUS') {
         setIsDirectoryConfigured(message.isConfigured);
         setDirectoryName(message.directoryName);
       }
-      
+
       if (message.type === 'DIRECTORY_NOT_CONFIGURED') {
         setIsDirectoryConfigured(false);
         setDirectoryName(null);
@@ -92,7 +91,7 @@ const Panel: React.FC = () => {
       console.log('[Panel] Cleaning up connection');
       connection.disconnect();
     };
-  }, []);
+  }, [applySnapshot]);
 
   const handleClearData = () => {
     console.log('[Panel] Clearing data');
