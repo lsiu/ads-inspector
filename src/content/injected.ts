@@ -158,8 +158,18 @@ const setupGtpListener = () => {
       const slot = event.slot;
       const adUnitPath = slot.getAdUnitPath();
       const divId = slot.getSlotElementId();
+      const targetingMap = slot.getTargetingMap();
+     
+      const pbjs = (window as any).pbjs || { que: [] };
+      const auctionIdSet = new Set(pbjs.getBidResponsesForAdUnitCode(slot.getSlotElementId()).bids.map((b: Bid) => b.auctionId))
+
+      if (auctionIdSet.size === 0 || auctionIdSet.size > 1) {
+        console.error('[Ad Inspector] GPT slot render ended with no or multiple auction IDs:', auctionIdSet.size, adUnitPath, divId, event, targetingMap);
+      }
+      const auctionId = Array.from(auctionIdSet).pop() ?? null;
 
       const postData = {
+        auctionId,
         adUnitPath,
         divId,
         creativeId: event.creativeId,
@@ -172,7 +182,7 @@ const setupGtpListener = () => {
         sourceAgnosticCreativeId: event.sourceAgnosticCreativeId,
         sourceAgnosticLineItemId: event.sourceAgnosticLineItemId,
       };
-      log('GPT slot render ended:', postData, event);
+      log('GPT slot render ended:', postData, event, targetingMap);
 
       postEvent('GPT_RENDER_ENDED', postData);
     });
