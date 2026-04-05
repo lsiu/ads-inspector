@@ -114,6 +114,7 @@ export interface GptInfo {
 export interface AdSlot {
   slotCode: string;
   auctionId: string;
+  timestamp: number;
   divId: string;
   sizes: number[][];
   bids: Bid[];

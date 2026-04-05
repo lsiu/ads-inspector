@@ -33,7 +33,7 @@ const Panel: React.FC = () => {
         id: `${slot.slotCode}-${slot.auctionId || 'unknown'}`,
         slotCode: slot.slotCode,
         auctionId: slot.auctionId,
-        timestamp: Date.now(),
+        timestamp: slot.timestamp,
         bids: slot.bids,
         winningBid: slot.winningBid,
         sizes: slot.sizes,
