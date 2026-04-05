@@ -24,7 +24,7 @@
   "options_page": "src/options/options.html",
   "web_accessible_resources": [
     {
-      "resources": ["src/devtools/panel.html", "injected.js"],
+      "resources": ["src/devtools/panel.html", "injected.js", "*.map"],
       "matches": ["<all_urls>"]
     }
   ]
