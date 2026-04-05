@@ -288,6 +288,7 @@ const Panel: React.FC = () => {
                   <table className="w-full text-sm">
                     <thead className="bg-gray-800">
                       <tr>
+                        <th className="px-3 py-2 text-left text-gray-400">Bid ID</th>
                         <th className="px-3 py-2 text-left text-gray-400">Bidder</th>
                         <th className="px-3 py-2 text-right text-gray-400">CPM</th>
                         <th className="px-3 py-2 text-right text-gray-400">Size</th>
@@ -304,6 +305,7 @@ const Panel: React.FC = () => {
                               : ''
                           }`}
                         >
+                          <td className="px-3 py-2 text-gray-400 font-mono text-xs" title={bid.bidId}>{bid.bidId}</td>
                           <td className="px-3 py-2 text-white">{bid.bidder}</td>
                           <td className="px-3 py-2 text-right text-green-400">
                             ${bid.cpm.toFixed(2)}
