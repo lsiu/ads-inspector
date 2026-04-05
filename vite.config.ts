@@ -18,6 +18,13 @@ export default defineConfig({
         panel: 'src/devtools/panel.html',
         devtools: 'src/devtools/devtools.html',
         options: 'src/options/options.html',
+        injected: 'src/content/injected.ts',
+      },
+      output: {
+        entryFileNames: (chunkInfo) => {
+          if (chunkInfo.name === 'injected') return 'injected.js';
+          return 'assets/[name]-[hash].js';
+        },
       },
     },
   },

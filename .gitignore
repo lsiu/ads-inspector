@@ -43,3 +43,7 @@ favicon.svg
 
 # Sourcemaps (optional - uncomment if you don't want to commit them)
 # **/*.map
+
+# build from build-injected.mjs
+public/injected.js
+public/injected.js.map
