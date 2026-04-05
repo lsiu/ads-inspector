@@ -72,7 +72,7 @@ const AdSlotGroup: React.FC<{
 }> = ({ slotCode, auctions, selectedAuction, onSelectAuction }) => {
   const [expanded, setExpanded] = useState(true);
 
-  const topBid = auctions.find((a) => a.winningBid)?.winningBid;
+  const topBid = auctions.reduce((a1, a2) => (a1.winningBid?.cpm || 0) > (a2.winningBid?.cpm || 0) ? a1 : a2).winningBid;
   const isAnySelected = auctions.some((a) => selectedAuction?.id === a.id);
 
   return (
