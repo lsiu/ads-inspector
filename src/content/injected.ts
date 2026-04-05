@@ -16,7 +16,12 @@ function postEvent(type: AuctionEventType, payload: Record<string, unknown>) {
   });
 }
 
-console.log('[Ad Inspector] Injected script loaded');
+// Styled console.log with blue badge prefix
+const log = (msg: string, ...args: unknown[]) => {
+  console.log('%c[Ad Inspector]%c ' + msg, 'background:#3b82f6;color:#fff;padding:2px 6px;border-radius:4px;font-weight:bold;font-size:11px', 'color:inherit;font-weight:normal', ...args);
+};
+
+log('Injected script loaded');
 
 // Wait for pbjs to be available
 const waitForPbjs = setInterval(() => {
@@ -24,11 +29,11 @@ const waitForPbjs = setInterval(() => {
 
   if (pbjs && typeof pbjs.onEvent === 'function') {
     clearInterval(waitForPbjs);
-    console.log('[Ad Inspector] Prebid.js detected!');
+    log('Prebid.js detected!');
 
     // Listen to auction init event
     pbjs.onEvent('auctionInit', (data: any) => {
-      console.log('[Ad Inspector] Auction initialized:', data.auctionId);
+      log('Auction initialized:', data.auctionId, data);
       postEvent('AUCTION_INIT', {
         auctionId: data.auctionId,
         timestamp: data.timestamp,
@@ -38,7 +43,7 @@ const waitForPbjs = setInterval(() => {
 
     // Listen to bid requested
     pbjs.onEvent('bidRequested', (data: any) => {
-      console.log('[Ad Inspector] Bid requested:', data);
+      log('Bid requested:', data);
       postEvent('BID_REQUESTED', {
         bidder: data.bidderCode,
         adUnitCode: data.adUnitCode,
@@ -61,7 +66,7 @@ const waitForPbjs = setInterval(() => {
         adUnitCode: data.adUnitCode,
       };
 
-      console.log('[Ad Inspector] Bid received:', bid);
+      log('Bid received:', bid, data);
       postEvent('BID_RESPONSE', {
         auctionId: data.auctionId || '',
         adUnitCode: data.adUnitCode,
@@ -85,7 +90,7 @@ const waitForPbjs = setInterval(() => {
         adUnitCode: data.adUnitCode,
       };
 
-      console.log('[Ad Inspector] Bid won:', winningBid);
+      log('Bid won:', winningBid, data);
       postEvent('BID_WON', {
         auctionId: data.auctionId || '',
         adUnitCode: data.adUnitCode,
@@ -95,7 +100,7 @@ const waitForPbjs = setInterval(() => {
 
     // Listen to auction end
     pbjs.onEvent('auctionEnd', (data: any) => {
-      console.log('[Ad Inspector] Auction ended:', data.auctionId);
+      log('Auction ended:', data.auctionId);
       postEvent('AUCTION_END', {
         auctionId: data.auctionId,
         adUnitCode: data.adUnitCode,
@@ -103,7 +108,7 @@ const waitForPbjs = setInterval(() => {
       });
     });
 
-    console.log('[Ad Inspector] Prebid.js listeners attached');
+    log('Prebid.js listeners attached');
   }
 }, 200);
 
@@ -112,9 +117,9 @@ setTimeout(() => {
   clearInterval(waitForPbjs);
   const pbjs = (window as any).pbjs;
   if (!pbjs) {
-    console.log('[Ad Inspector] Timeout: Prebid.js not found on this page');
+    log('Timeout: Prebid.js not found on this page');
   } else if (typeof pbjs.onEvent !== 'function') {
-    console.log('[Ad Inspector] Timeout: pbjs exists but onEvent not available');
+    log('Timeout: pbjs exists but onEvent not available');
   }
 }, 30000);
 
@@ -129,7 +134,7 @@ const setupGTMListener = () => {
       args.forEach((arg: any) => {
         if (arg && typeof arg === 'object') {
           if (arg.event?.includes('ad') || arg.adUnit || arg.slot) {
-            console.log('[Ad Inspector] GTM ad event:', arg);
+            log('GTM ad event:', arg);
             postEvent('GTM_EVENT', { event: arg });
           }
         }
@@ -138,7 +143,7 @@ const setupGTMListener = () => {
       return result;
     };
 
-    console.log('[Ad Inspector] GTM dataLayer listener attached');
+    log('GTM dataLayer listener attached');
   }
 };
 
@@ -154,7 +159,7 @@ const setupGtpListener = () => {
       const adUnitPath = slot.getAdUnitPath();
       const divId = slot.getSlotElementId();
 
-      console.log('[Ad Inspector] GPT slot render ended:', {
+      log('GPT slot render ended:', {
         adUnitPath,
         divId,
         creativeId: event.creativeId,
