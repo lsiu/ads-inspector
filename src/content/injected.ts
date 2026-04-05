@@ -181,8 +181,27 @@ const setupGTMListener = () => {
       return result;
     };
     
-    console.log('[Ad Inspector] GTM dataLayer listener attached');
+  console.log('[Ad Inspector] GTM dataLayer listener attached');
   }
 };
 
 setupGTMListener();
+
+const setupGtpListener = () => {
+    // Ensure googletag is initialized
+  window.googletag = window.googletag || { cmd: [] };
+
+  googletag.cmd.push(() => {
+    googletag.pubads().addEventListener('slotRenderEnded', (event: GPTEvent) => {
+      console.log({
+        'Slot ID': event.slot.getSlotElementId(),
+        'Source': event.serviceName, // e.g., "publisher_ads"
+        'Line Item ID': event.lineItemId,
+        'Is Empty?': event.isEmpty,
+        'Advertiser ID': event.advertiserId
+      });
+    });
+  });
+}
+
+setupGtpListener();
