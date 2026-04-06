@@ -167,7 +167,7 @@ If you add a new HTML page or script, add it to the input config.
 - **Event-Driven Architecture**: Events are forwarded immediately, not batched
 - **State Accumulation**: Background worker maintains per-tab auction state
 - **NDJSON Format**: One JSON object per line, one event per line
-- **File Naming**: `auctions-YYYY-MM-DD-HH.json`
+- **File Naming**: `auctions-YYYYMMDD-HHmmss-<auction_id>.json`
 - **Manifest V3**: Modern Chrome extension architecture
 - **No Separate Build Script**: `npm run build` handles everything via Vite
 

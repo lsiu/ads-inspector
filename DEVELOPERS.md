@@ -191,7 +191,7 @@ Auction data is written as **NDJSON** (one JSON object per line), one event per 
 {"pageUrl":"https://example.com","timestamp":1711728000100,"type":"GPT_RENDER_ENDED","data":{"adUnitPath":"/1234/slot","creativeId":12345,"lineItemId":67890,"isEmpty":false,...},"savedAt":1711728000100}
 ```
 
-**File naming**: `auctions-YYYY-MM-DD-HH.json` (e.g., `auctions-2026-03-29-22.json`)
+**File naming**: `auctions-YYYYMMDD-HHmmss-<auction_id>.json` (e.g., `auction-20260406-104627-823127e1-7e7.json`)
 
 ## Key Files Reference
 

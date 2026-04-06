@@ -77,7 +77,7 @@ Auction data is written as **NDJSON** (one JSON object per line):
 {"pageUrl":"https://example.com","timestamp":1711728000000,"type":"BID_RESPONSE","data":{"auctionId":"...","adUnitCode":"/1234/slot","bid":{...},"sizes":[[300,250]]},"savedAt":1711728000000}
 ```
 
-**File naming**: `auctions-YYYY-MM-DD-HH.json` (e.g., `auctions-2026-03-29-22.json`)
+**File naming**: `auctions-YYYYMMDD-HHmmss-<auction_id>.json` (e.g., `auction-20260406-104627-823127e1-7e7.json`)
 
 ## Technologies
 

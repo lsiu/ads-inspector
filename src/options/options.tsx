@@ -76,7 +76,7 @@ const Options: React.FC = () => {
           <h2 className="text-xl font-semibold text-white mb-4">Storage Directory</h2>
           <p className="text-gray-400 mb-4">
             Select a directory where auction data will be saved. Data is written hourly to files
-            named <code className="bg-gray-700 px-2 py-1 rounded">auctions-YYYY-MM-DD-HH.json</code>.
+            named <code className="bg-gray-700 px-2 py-1 rounded">auctions-YYYYMMDD-HHmmss-&gt;auction_id&lt;.json</code>.
           </p>
 
           <div className="flex items-center gap-4 mb-4">
