@@ -16,7 +16,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["src/content/content.tsx"],
+      "js": ["src/content/content.ts"],
       "run_at": "document_start"
     }
   ],
@@ -24,7 +24,7 @@
   "options_page": "src/options/options.html",
   "web_accessible_resources": [
     {
-      "resources": ["src/devtools/panel.html", "injected.js", "*.map"],
+      "resources": ["*.map"],
       "matches": ["<all_urls>"]
     }
   ]

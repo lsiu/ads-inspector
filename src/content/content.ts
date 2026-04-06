@@ -1,10 +1,11 @@
-// Content script - bridges page context with background service worker
+import injectedScript from './injected.ts?script';
 
+// Content script - bridges page context with background service worker
 console.log('[Ad Inspector] Content script starting...');
 
 // Inject the script into the page context
 const script = document.createElement('script');
-script.src = chrome.runtime.getURL('injected.js');
+script.src = chrome.runtime.getURL(injectedScript);
 (document.head || document.documentElement).appendChild(script);
 
 console.log('[Ad Inspector] Injected script tag added to page');
