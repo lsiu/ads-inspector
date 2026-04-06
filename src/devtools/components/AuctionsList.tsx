@@ -124,9 +124,18 @@ const AdSlotGroup: React.FC<{
                 </div>
                 <div className="ml-2 flex flex-col items-end">
                   {auction.winningBid ? (
-                    <span className="px-1.5 py-0.5 text-[10px] bg-green-600/30 text-green-400 rounded">
-                      {auction.winningBid.bidder.includes('Google Ad Manager') ? 'GPT' : 'Prebid'}
-                    </span>
+                    <>
+                      <span className="text-[10px] font-medium text-gray-300 truncate max-w-[200px]" title={auction.winningBid.bidder}>
+                        {auction.winningBid.bidder}
+                      </span>
+                      <span className={`px-1.5 py-0.5 text-[10px] rounded ${
+                        auction.winningBid.bidder.includes('Google Ad Manager')
+                          ? 'bg-yellow-600/30 text-yellow-400'
+                          : 'bg-green-600/30 text-green-400'
+                      }`}>
+                        ${auction.winningBid.cpm.toFixed(2)}
+                      </span>
+                    </>
                   ) : (
                     <span className="text-xs text-gray-600">{auction.bids.length} bids</span>
                   )}
