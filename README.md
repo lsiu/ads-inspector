@@ -42,9 +42,6 @@ npm run build
 ```bash
 # Development mode with hot module replacement
 npm run dev
-
-# Lint code
-npm run lint
 ```
 
 ## Debugging
@@ -94,8 +91,6 @@ Auction data is written as **NDJSON** (one JSON object per line):
 ```bash
 npm run dev                  # Start dev server with HMR
 npm run build               # Build for production (includes sourcemaps)
-npm run lint                # Check code quality
-npm run preview             # Preview build
 ```
 
 ## Documentation
