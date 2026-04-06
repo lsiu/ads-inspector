@@ -1,40 +1,33 @@
 # Ad Auction Inspector
 
-A Chrome extension that monitors Prebid.js and Google Tag Manager ad auctions and displays them in Chrome DevTools.
+A Chrome DevTools extension that monitors Prebid.js and Google Tag Manager ad auctions in real-time and displays them in Chrome DevTools.
 
 ## Features
 
-- **Real-time auction monitoring**: Listens to Prebid.js events (auctionInit, bidResponse, bidWon, auctionEnd)
+- **Real-time auction monitoring**: Listens to Prebid.js events (auctionInit, bidRequested, bidResponse, bidWon, auctionEnd)
+- **Google Publisher Tag (GPT) correlation**: Captures `slotRenderEnded` events to identify winning ads even when GAM serves direct-sold or backfill ads
 - **Ad slot catalog**: View all ad slots with their sizes and auction history
 - **Bidder breakdown**: See all bids with CPM prices and status (winner/loser)
-- **Creative preview**: Render the winning ad markup
-- **Data persistence**: Auction data is saved hourly to your selected directory in NDJSON format
+- **Creative preview**: Render the winning ad markup (Prebid bids only; GPT-only wins show SafeFrame notice)
+- **Data persistence**: Individual auction events saved to user-selected directory in NDJSON format
 - **DevTools integration**: Custom panel in Chrome DevTools for easy access
 
-## Development
+## Quick Start
 
 ### Prerequisites
 
 - Node.js 20+
 - npm
 
-### Install Dependencies
+### Install and Build
 
 ```bash
+# Install dependencies
 npm install
-```
 
-### Build Commands
-
-```bash
-# Standard build (includes sourcemaps)
+# Build extension
 npm run build
-
-# Lint code
-npm run lint
 ```
-
-**Note:** Due to a Vite 8 + React 19 compatibility issue, all builds include sourcemaps by default. The build output is optimized for Chrome extensions.
 
 ### Load Extension in Chrome
 
@@ -44,87 +37,71 @@ npm run lint
 4. Click **Load unpacked**
 5. Select the `dist` folder
 
-### Debugging with Sourcemaps
+### Development
 
-All builds include sourcemaps by default. This allows you to:
+```bash
+# Development mode with hot module replacement
+npm run dev
+
+# Lint code
+npm run lint
+```
+
+## Debugging
+
+### With Sourcemaps
+
+All builds include sourcemaps by default (due to Vite 8 + React 19 compatibility):
 - Debug original TypeScript/React source in Chrome DevTools
-- Set breakpoints in your source files
+- Set breakpoints in source files
 - See meaningful stack traces
-
-When the extension is loaded, you can:
-1. Open DevTools on any page
-2. Go to the **Ad Inspector** panel
-3. Open DevTools for the DevTools panel (three dots → More tools → Developer tools)
-4. Set breakpoints in your original source code
 
 ### VS Code Debugging
 
-This project includes a `.vscode/launch.json` configuration for debugging:
+1. Press `F5` in VS Code to launch Chrome with extension loaded
+2. The extension loads from `dist` folder automatically
+3. Configuration in `.vscode/launch.json`
 
-1. Press `F5` in VS Code to launch Chrome with the extension loaded
-2. The extension will be loaded from the `dist` folder automatically
+### Debugging DevTools Panel
 
-## Project Structure
-
-```
-ad-auction-inspector/
-├── src/
-│   ├── content/           # Content script (Prebid.js listeners)
-│   │   └── content.tsx
-│   │   └── injected.ts    # Injected script (runs in page context)
-│   ├── background/        # Background service worker
-│   │   ├── background.ts
-│   │   ├── storage.ts     # File system storage using IndexedDB
-│   │   └── idb.ts         # IndexedDB helpers
-│   ├── devtools/          # DevTools panel
-│   │   ├── components/
-│   │   │   ├── AuctionsList.tsx
-│   │   │   └── AdSlots.tsx
-│   │   ├── Panel.tsx
-│   │   └── devtools.ts
-│   ├── options/           # Options page for settings
-│   │   └── options.tsx
-│   ├── shared/            # Shared utilities
-│   │   └── idb.ts         # Shared IndexedDB helpers
-│   └── public/
-│       └── manifest.json  # Chrome extension manifest
-├── public/                # Static assets copied to dist
-│   └── injected.js        # Injected script (built to dist/)
-├── .vscode/
-│   └── launch.json        # VS Code debug configuration
-├── vite.config.ts         # Vite + CRXJS configuration
-├── tailwind.config.js     # Tailwind CSS configuration
-└── package.json
-```
-
-## How It Works
-
-1. **Content Script**: Injects into all web pages and listens for Prebid.js events
-2. **Injected Script**: Runs in the page context to access `window.pbjs` (Prebid.js)
-3. **Background Service Worker**: Receives auction data from content scripts and forwards to DevTools panel
-4. **DevTools Panel**: Displays auction data in a user-friendly interface
-5. **IndexedDB**: Stores the directory handle for file system access (handles can only be stored in IndexedDB)
-6. **File System Access API**: Writes auction data to user-selected directory
+1. Open DevTools on any page
+2. Go to the **Ad Inspector** panel
+3. Open DevTools for the DevTools panel (three dots → More tools → Developer tools)
+4. Set breakpoints in original source code
 
 ## Data Format
 
-Auction data is written hourly in NDJSON format (one JSON object per line):
+Auction data is written as **NDJSON** (one JSON object per line):
 
 ```json
-{"pageUrl":"https://example.com","timestamp":1711728000000,"adSlots":[...],"savedAt":1711728000000}
-{"pageUrl":"https://example.com","timestamp":1711728060000,"adSlots":[...],"savedAt":1711728060000}
+{"pageUrl":"https://example.com","timestamp":1711728000000,"type":"BID_RESPONSE","data":{"auctionId":"...","adUnitCode":"/1234/slot","bid":{...},"sizes":[[300,250]]},"savedAt":1711728000000}
 ```
 
-Files are named: `auctions-YYYY-MM-DD-HH.json` (e.g., `auctions-2026-03-29-22.json`)
+**File naming**: `auctions-YYYY-MM-DD-HH.json` (e.g., `auctions-2026-03-29-22.json`)
 
 ## Technologies
 
-- **Vite** + **CRXJS**: Fast build tooling with Chrome extension support
-- **React** 19: UI framework
-- **TypeScript**: Type-safe development
-- **Tailwind CSS**: Utility-first styling
-- **IndexedDB**: Persistent storage for FileSystemHandle objects
-- **File System Access API**: Direct file system access for data export
+- **Build**: Vite 8 + CRXJS 2.4.0
+- **Framework**: React 19
+- **Language**: TypeScript 5.9
+- **Styling**: Tailwind CSS 4 + PostCSS
+- **Extension API**: Chrome Extension Manifest V3
+- **Storage**: IndexedDB for FileSystemHandle persistence
+- **File System**: File System Access API for data export
+
+## Useful Commands
+
+```bash
+npm run dev                  # Start dev server with HMR
+npm run build               # Build for production (includes sourcemaps)
+npm run lint                # Check code quality
+npm run preview             # Preview build
+```
+
+## Documentation
+
+- **For Developers**: See [DEVELOPERS.md](./DEVELOPERS.md) for architecture details, coding standards, and contribution guidelines
+- **For AI Agents**: See [AGENTS.md](./AGENTS.md) for coding instructions and project structure guidelines
 
 ## License
 
