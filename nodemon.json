@@ -4,7 +4,8 @@
   },
   "watch": [
     "src",
-    "vite.config.ts"
+    "vite.config.ts",
+    "manifest.json"
   ],
   "ext": "tsx,css,html,ts,json",
   "ignore": [

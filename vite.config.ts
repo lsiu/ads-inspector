@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { crx } from '@crxjs/vite-plugin'
-import manifest from './src/public/manifest.json'
+import manifest from './manifest.json'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -10,14 +10,10 @@ export default defineConfig({
     crx({ manifest }),
   ],
   build: {
-    target: 'esnext',
     sourcemap: true,
     minify: false,
     rolldownOptions: {
-      input: {
-        // The key 'panel' is arbitrary; the path is what matters.
-        panel: 'src/devtools/panel.html',
-      },
+      input: ['src/devtools/panel.html'],
     },
   },
 })
