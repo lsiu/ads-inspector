@@ -185,6 +185,7 @@ const setupGtpListener = () => {
         size: event.size,
         sourceAgnosticCreativeId: event.sourceAgnosticCreativeId,
         sourceAgnosticLineItemId: event.sourceAgnosticLineItemId,
+        ad: slot.getHtml(),
       };
       log('GPT slot render ended:', postData, event, targetingMap);
 

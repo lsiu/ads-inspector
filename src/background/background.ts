@@ -190,7 +190,7 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
           currency: 'USD',
           width: Array.isArray(size) ? size[0] : 0,
           height: Array.isArray(size) ? size[1] : 0,
-          ad: '',
+          ad: d.ad as string,
           creativeId: String(sourceAgnosticCreativeId ?? creativeId ?? ''),
           auctionId: slot.auctionId,
           adUnitCode: slotKey,
