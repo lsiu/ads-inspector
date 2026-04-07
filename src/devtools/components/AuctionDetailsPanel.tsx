@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Bid, GptInfo } from '../../shared/types';
 
 interface AuctionEvent {
@@ -15,6 +15,58 @@ interface AuctionEvent {
 interface AuctionDetailsPanelProps {
   selectedAuction: AuctionEvent | null;
 }
+
+/** Expandable bid row that shows ad markup when clicked */
+const BidRow: React.FC<{
+  bid: Bid;
+  isWinner: boolean;
+}> = ({ bid, isWinner }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="border-t border-gray-700">
+      <div
+        onClick={() => setExpanded(!expanded)}
+        className={`grid grid-cols-12 gap-2 px-3 py-2 text-sm cursor-pointer transition-colors ${
+          isWinner ? 'bg-green-900/20 hover:bg-green-900/30' : 'hover:bg-gray-800'
+        }`}
+      >
+        <div className="col-span-4 text-gray-400 font-mono text-xs truncate" title={bid.bidId}>
+          {bid.bidId}
+        </div>
+        <div className="col-span-3 text-white">{bid.bidder}</div>
+        <div className="col-span-2 text-right text-green-400">
+          ${bid.cpm.toFixed(2)}
+        </div>
+        <div className="col-span-2 text-right text-gray-300">
+          {bid.width}x{bid.height}
+        </div>
+        <div className="col-span-1">
+          {isWinner ? (
+            <span className="px-2 py-0.5 text-xs bg-green-600 text-white rounded">
+              Winner
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 text-xs bg-gray-600 text-gray-300 rounded">
+              Lost
+            </span>
+          )}
+        </div>
+      </div>
+      {/* Expanded Ad Markup */}
+      {expanded && bid.ad && (
+        <div className="bg-gray-800 px-4 py-3 border-t border-gray-700">
+          <h4 className="text-sm font-semibold text-gray-300 mb-2">Ad Markup</h4>
+          <div className="bg-white rounded p-2">
+            <pre className="text-xs text-black whitespace-pre-wrap break-words max-h-96 overflow-y-auto">
+              {bid.ad}
+            </pre>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const AuctionDetailsPanel: React.FC<AuctionDetailsPanelProps> = ({ selectedAuction }) => {
   if (!selectedAuction) {
@@ -132,50 +184,23 @@ const AuctionDetailsPanel: React.FC<AuctionDetailsPanelProps> = ({ selectedAucti
       {/* All Bids */}
       <div>
         <h3 className="text-lg font-semibold text-white mb-2">All Bids ({selectedAuction.bids.length})</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-800">
-              <tr>
-                <th className="px-3 py-2 text-left text-gray-400">Bid ID</th>
-                <th className="px-3 py-2 text-left text-gray-400">Bidder</th>
-                <th className="px-3 py-2 text-right text-gray-400">CPM</th>
-                <th className="px-3 py-2 text-right text-gray-400">Size</th>
-                <th className="px-3 py-2 text-left text-gray-400">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {selectedAuction.bids.map((bid, index) => (
-                <tr
-                  key={index}
-                  className={`border-t border-gray-700 ${
-                    selectedAuction.winningBid?.bidId === bid.bidId
-                      ? 'bg-green-900/20'
-                      : ''
-                  }`}
-                >
-                  <td className="px-3 py-2 text-gray-400 font-mono text-xs" title={bid.bidId}>{bid.bidId}</td>
-                  <td className="px-3 py-2 text-white">{bid.bidder}</td>
-                  <td className="px-3 py-2 text-right text-green-400">
-                    ${bid.cpm.toFixed(2)}
-                  </td>
-                  <td className="px-3 py-2 text-right text-gray-300">
-                    {bid.width}x{bid.height}
-                  </td>
-                  <td className="px-3 py-2">
-                    {selectedAuction.winningBid?.bidId === bid.bidId ? (
-                      <span className="px-2 py-0.5 text-xs bg-green-600 text-white rounded">
-                        Winner
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 text-xs bg-gray-600 text-gray-300 rounded">
-                        Lost
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-1">
+          {/* Header */}
+          <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-800 text-sm">
+            <div className="col-span-4 text-gray-400">Bid ID</div>
+            <div className="col-span-3 text-gray-400">Bidder</div>
+            <div className="col-span-2 text-right text-gray-400">CPM</div>
+            <div className="col-span-2 text-right text-gray-400">Size</div>
+            <div className="col-span-1 text-left text-gray-400">Status</div>
+          </div>
+          {/* Bid Rows */}
+          {selectedAuction.bids.map((bid, index) => (
+            <BidRow
+              key={index}
+              bid={bid}
+              isWinner={selectedAuction.winningBid?.bidId === bid.bidId}
+            />
+          ))}
         </div>
       </div>
 
