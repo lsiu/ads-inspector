@@ -357,6 +357,16 @@ const Panel: React.FC = () => {
                   </div>
                 </div>
               ) : null}
+              <h3 className="text-lg font-semibold text-white mb-2">
+                Ad Markup
+              </h3>
+              <div className="bg-gray-800 rounded-lg p-4">
+                <div className="bg-white rounded p-2">
+                  <pre className="text-xs text-black whitespace-pre-wrap break-words">
+                    {selectedAuction.winningBid?.ad}
+                  </pre>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-center h-full text-gray-500">
