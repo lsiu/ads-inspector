@@ -362,4 +362,23 @@ chrome.runtime.onConnect.addListener((port) => {
   }
 });
 
+// Clear auction data when a tab navigates or reloads
+chrome.webNavigation.onCommitted.addListener((details) => {
+  // Only main frame navigation
+  if (details.frameId !== 0) return;
+
+  const tabId = details.tabId;
+  console.log('[Ad Inspector] Page navigation detected for tab:', tabId, details.url);
+
+  // Clear all auction state for this tab
+  tabData.delete(tabId);
+  auctionFiles.clear();
+  auctionTimestamps.clear();
+
+  // Notify all connected DevTools panels
+  devToolsPorts.forEach((port) => {
+    port.postMessage({ type: 'AUCTION_DATA_UPDATE', payload: { pageUrl: '', timestamp: Date.now(), adSlots: [] } });
+  });
+});
+
 console.log('[Ad Inspector] Background service worker started');
