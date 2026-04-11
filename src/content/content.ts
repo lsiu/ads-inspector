@@ -14,10 +14,22 @@ console.log('[Ad Inspector] Injected script tag added to page');
 window.addEventListener('message', (event) => {
   if (event.data && event.data.source === 'auction-inspector') {
     console.log('[Ad Inspector] Received message from page:', event.data.type, event);
-    
+
     chrome.runtime.sendMessage({
       type: event.data.type,
       payload: event.data.payload,
+    });
+  }
+});
+
+// Listen for messages FROM the background and forward TO the page
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'HIGHLIGHT_SLOT') {
+    console.log('[Ad Inspector] Forwarding highlight to page:', message.payload);
+    window.postMessage({
+      source: 'auction-inspector',
+      type: 'HIGHLIGHT_SLOT',
+      payload: message.payload,
     });
   }
 });

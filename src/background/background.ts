@@ -330,6 +330,14 @@ chrome.runtime.onConnect.addListener((port) => {
           }
         });
       }
+      if (message.type === 'HIGHLIGHT_SLOT') {
+        const { slotCode, tabId } = message.payload;
+        console.log('[Ad Inspector] Highlighting slot:', slotCode, 'on tab:', tabId);
+        chrome.tabs.sendMessage(tabId, {
+          type: 'HIGHLIGHT_SLOT',
+          payload: { slotCode },
+        });
+      }
     });
   }
 });

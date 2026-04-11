@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 
 interface Bid {
   bidder: string;
@@ -30,6 +30,24 @@ interface AuctionsListProps {
 }
 
 const AuctionsList: React.FC<AuctionsListProps> = ({ auctions, selectedAuction, onSelectAuction }) => {
+  const portRef = useRef<chrome.runtime.Port | null>(null);
+
+  // Connect to background service worker for highlight functionality
+  React.useEffect(() => {
+    const port = chrome.runtime.connect({ name: 'devtools-panel' });
+    portRef.current = port;
+    return () => port.disconnect();
+  }, []);
+
+  const handleHighlight = (slotCode: string) => {
+    if (portRef.current) {
+      portRef.current.postMessage({
+        type: 'HIGHLIGHT_SLOT',
+        payload: { slotCode, tabId: chrome.devtools.inspectedWindow.tabId },
+      });
+    }
+  };
+
   if (auctions.size === 0) {
     return (
       <div className="p-4 text-gray-500 text-sm">
@@ -56,6 +74,7 @@ const AuctionsList: React.FC<AuctionsListProps> = ({ auctions, selectedAuction, 
             auctions={events}
             selectedAuction={selectedAuction}
             onSelectAuction={onSelectAuction}
+            onHighlight={handleHighlight}
           />
         ))}
       </div>
@@ -69,7 +88,8 @@ const AdSlotGroup: React.FC<{
   auctions: AuctionEvent[];
   selectedAuction: AuctionEvent | null;
   onSelectAuction: (auction: AuctionEvent) => void;
-}> = ({ slotCode, auctions, selectedAuction, onSelectAuction }) => {
+  onHighlight: (slotCode: string) => void;
+}> = ({ slotCode, auctions, selectedAuction, onSelectAuction, onHighlight }) => {
   const [expanded, setExpanded] = useState(true);
 
   const topBid = auctions.reduce((a1, a2) => (a1.winningBid?.cpm || 0) > (a2.winningBid?.cpm || 0) ? a1 : a2).winningBid;
@@ -96,6 +116,13 @@ const AdSlotGroup: React.FC<{
           <span className="text-xs text-gray-500">
             {auctions.length}
           </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); onHighlight(slotCode); }}
+            className="text-xs px-1.5 py-0.5 rounded hover:bg-gray-600 transition-colors"
+            title="Highlight on page"
+          >
+            🎯
+          </button>
         </div>
       </button>
 

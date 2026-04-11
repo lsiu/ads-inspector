@@ -54,7 +54,8 @@ export type OptionsToBackgroundMessage =
 export type PanelToBackgroundMessage =
   | { type: 'GET_DATA' }
   | { type: 'CLEAR_DATA' }
-  | { type: 'OPEN_OPTIONS' };
+  | { type: 'OPEN_OPTIONS' }
+  | { type: 'HIGHLIGHT_SLOT'; payload: { slotCode: string; tabId: number } };
 
 // ──────────────────────────────────────────────
 // Background → Panel (port postMessage)
