@@ -107,7 +107,7 @@ const AuctionDetailsPanel: React.FC<AuctionDetailsPanelProps> = ({ selectedAucti
               <span className="text-gray-400">CPM:</span>
               <span className="ml-2 text-green-400 font-semibold">
                 {selectedAuction.winningBid.cpm > 0
-                  ? `${selectedAuction.winningBid.currency} ${selectedAuction.winningBid.cpm.toFixed(2)}`
+                  ? `${selectedAuction.winningBid.currency} ${selectedAuction.winningBid.cpm}`
                   : 'N/A (direct/backfill)'}
               </span>
             </div>
