@@ -92,7 +92,7 @@ const AdSlotGroup: React.FC<{
             </span>
           )}
           <span className="text-xs text-gray-500">
-            {auctions.length}
+            {auctions.length} auction{auctions.length !== 1 ? 's' : ''}
           </span>
           <button
             onClick={(e) => { e.stopPropagation(); onHighlight(slotCode); }}
