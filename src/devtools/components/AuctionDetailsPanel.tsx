@@ -26,7 +26,7 @@ const BidRow: React.FC<{
         </div>
         <div className="col-span-3 text-white">{bid.bidder}</div>
         <div className="col-span-2 text-right text-green-400">
-          ${bid.cpm.toFixed(2)}
+          {bid.currency} {bid.cpm.toFixed(2)}
         </div>
         <div className="col-span-2 text-right text-gray-300">
           {bid.width}x{bid.height}
@@ -107,7 +107,7 @@ const AuctionDetailsPanel: React.FC<AuctionDetailsPanelProps> = ({ selectedAucti
               <span className="text-gray-400">CPM:</span>
               <span className="ml-2 text-green-400 font-semibold">
                 {selectedAuction.winningBid.cpm > 0
-                  ? `$${selectedAuction.winningBid.cpm.toFixed(2)}`
+                  ? `${selectedAuction.winningBid.currency} ${selectedAuction.winningBid.cpm.toFixed(2)}`
                   : 'N/A (direct/backfill)'}
               </span>
             </div>
@@ -121,6 +121,12 @@ const AuctionDetailsPanel: React.FC<AuctionDetailsPanelProps> = ({ selectedAucti
               <span className="text-gray-400">Creative ID:</span>
               <span className="ml-2 text-white">
                 {selectedAuction.winningBid.creativeId || 'N/A'}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-400">Bid ID:</span>
+              <span className="ml-2 text-white">
+                {selectedAuction.winningBid.bidId || 'unknown'}
               </span>
             </div>
           </div>

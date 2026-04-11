@@ -185,9 +185,9 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
       if (slot.bids.length > 0 && !slot.winningBid && !isEmpty) {
         slot.winningBid = {
           bidder: isBackfill ? 'Google Ad Manager (Backfill)' : 'Google Ad Manager (Direct)',
-          bidId: `gpt-${sourceAgnosticCreativeId ?? creativeId ?? 'unknown'}`,
+          bidId: d.bidId as string,
           cpm: 0,
-          currency: 'USD',
+          currency: d.currency as string,
           width: Array.isArray(size) ? size[0] : 0,
           height: Array.isArray(size) ? size[1] : 0,
           ad: d.ad as string,

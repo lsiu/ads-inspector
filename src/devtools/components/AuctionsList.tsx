@@ -88,7 +88,7 @@ const AdSlotGroup: React.FC<{
         <div className="ml-2 flex items-center gap-2">
           {topBid && (
             <span className="text-xs text-green-400 font-semibold">
-              ${topBid.cpm.toFixed(2)}
+              {topBid.currency} {topBid.cpm.toFixed(2)}
             </span>
           )}
           <span className="text-xs text-gray-500">
@@ -141,7 +141,7 @@ const AdSlotGroup: React.FC<{
                         ? 'bg-yellow-600/30 text-yellow-400'
                         : 'bg-green-600/30 text-green-400'
                       }`}>
-                      ${auction.winningBid.cpm.toFixed(2)}
+                      {auction.winningBid.currency} {auction.winningBid.cpm.toFixed(2)}
                       </span>
                       
                     </>
