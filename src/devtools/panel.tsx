@@ -44,6 +44,9 @@ const Panel: React.FC = () => {
 
     // Connect to background service worker
     const connection = chrome.runtime.connect({ name: 'devtools-panel' });
+
+    connection.postMessage({ type: 'INIT', tabId: chrome.devtools.inspectedWindow.tabId });
+
     portRef.current = connection;
 
     console.log('[Panel] Connected:', connection.name);

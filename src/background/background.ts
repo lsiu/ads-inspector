@@ -278,8 +278,6 @@ chrome.runtime.onConnect.addListener((port) => {
   console.log('[Ad Inspector] onConnect:', port.name);
 
   if (port.name === 'devtools-panel') {
-    const portKey = port.sender?.tab?.id || Date.now();
-    devToolsPorts.set(portKey, port);
 
     // Send directory status
     Promise.all([isDirectoryConfigured(), getDirectoryName()]).then(([configured, name]) => {
@@ -290,18 +288,14 @@ chrome.runtime.onConnect.addListener((port) => {
       });
     });
 
-    // Send existing accumulated data
-    const allData: AdAuctionData = { pageUrl: '', timestamp: Date.now(), adSlots: [] };
-    tabData.forEach((data) => {
-      allData.adSlots.push(...data.adSlots);
-      if (!allData.pageUrl) allData.pageUrl = data.pageUrl;
-    });
-    port.postMessage({ type: 'AUCTION_DATA_UPDATE', payload: allData });
-
-    port.onDisconnect.addListener(() => devToolsPorts.delete(portKey));
-
-    port.onMessage.addListener((message) => {
+    const extensionListener = (message, senderPort) => {
       console.log('[Ad Inspector] Received from panel:', message);
+
+      if (message.type === 'INIT') {
+        devToolsPorts.set(message.tabId, senderPort);
+        console.log('[Ad Inspector] Panel initialized for tab:', message.tabId);
+        return;
+      }
 
       if (message.type === 'GET_DATA') {
         const allData: AdAuctionData = { pageUrl: '', timestamp: Date.now(), adSlots: [] };
@@ -311,12 +305,14 @@ chrome.runtime.onConnect.addListener((port) => {
         });
         port.postMessage({ type: 'AUCTION_DATA_UPDATE', payload: allData });
       }
+
       if (message.type === 'CLEAR_DATA') {
         tabData.clear();
         auctionFiles.clear();
         auctionTimestamps.clear();
         port.postMessage({ type: 'AUCTION_DATA_UPDATE', payload: { pageUrl: '', timestamp: Date.now(), adSlots: [] } });
       }
+
       if (message.type === 'OPEN_OPTIONS') {
         console.log('[Ad Inspector] Opening options page...');
         chrome.tabs.create({
@@ -330,6 +326,7 @@ chrome.runtime.onConnect.addListener((port) => {
           }
         });
       }
+
       if (message.type === 'HIGHLIGHT_SLOT') {
         const { slotCode, tabId } = message.payload;
         console.log('[Ad Inspector] Highlighting slot:', slotCode, 'on tab:', tabId);
@@ -337,6 +334,29 @@ chrome.runtime.onConnect.addListener((port) => {
           type: 'HIGHLIGHT_SLOT',
           payload: { slotCode },
         });
+      }
+    };
+
+    port.onMessage.addListener(extensionListener);
+
+    // Send existing accumulated data
+    const allData: AdAuctionData = { pageUrl: '', timestamp: Date.now(), adSlots: [] };
+    tabData.forEach((data) => {
+      allData.adSlots.push(...data.adSlots);
+      if (!allData.pageUrl) allData.pageUrl = data.pageUrl;
+    });
+    
+    port.postMessage({ type: 'AUCTION_DATA_UPDATE', payload: allData });
+
+    port.onDisconnect.addListener((port) => {
+      port.onMessage.removeListener(extensionListener);
+      // Clean up the connection mapping
+      const tabs = devToolsPorts.keys();
+      for (const t of tabs) {
+        if (devToolsPorts.get(t) === port) {
+          devToolsPorts.delete(t);
+          break;
+        }
       }
     });
   }
