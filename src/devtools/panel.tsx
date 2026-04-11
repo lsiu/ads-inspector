@@ -1,18 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import AuctionsList from './components/AuctionsList';
 import AuctionDetailsPanel from './components/AuctionDetailsPanel';
-import type { Bid, GptInfo, AdSlot } from '../shared/types';
-
-interface AuctionEvent {
-  id: string;
-  slotCode: string;
-  auctionId: string;
-  timestamp: number;
-  bids: Bid[];
-  winningBid?: Bid;
-  sizes: number[][];
-  gpt?: GptInfo;
-}
+import type { AdSlot } from '../shared/types';
+import type { AuctionEvent } from './types';
 
 const Panel: React.FC = () => {
   // Map<adUnitCode, AuctionEvent[]> — groups auctions by slot

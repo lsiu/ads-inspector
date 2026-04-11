@@ -1,27 +1,5 @@
 import React, { useState, useRef } from 'react';
-
-interface Bid {
-  bidder: string;
-  bidId: string;
-  cpm: number;
-  currency: string;
-  width: number;
-  height: number;
-  ad: string;
-  creativeId?: string;
-  auctionId: string;
-  adUnitCode: string;
-}
-
-interface AuctionEvent {
-  id: string;
-  slotCode: string;
-  auctionId: string;
-  timestamp: number;
-  bids: Bid[];
-  winningBid?: Bid;
-  sizes: number[][];
-}
+import type { AuctionEvent } from '../types';
 
 interface AuctionsListProps {
   auctions: Map<string, AuctionEvent[]>;
