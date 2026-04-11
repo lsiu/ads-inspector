@@ -111,6 +111,7 @@ const AuctionDetailsPanel: React.FC<AuctionDetailsPanelProps> = ({ selectedAucti
             <div>
               <span className="text-gray-400">Bidder:</span>
               <span className="ml-2 text-white">{selectedAuction.winningBid.bidder}</span>
+              {selectedAuction.winningBid?.ad.includes('adsrvr.org/bid/feedback') && selectedAuction.winningBid?.bidder !== 'ttd' && <span className="text-blue-300"> (src: TTD)</span>}
             </div>
             <div>
               <span className="text-gray-400">CPM:</span>
