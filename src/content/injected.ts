@@ -37,8 +37,10 @@ const waitForPbjs = setInterval(() => {
         auctionId: data.auctionId,
         timestamp: data.timestamp,
         adUnitCodes: data.adUnitCodes || [],
+        adUnits: data.adUnits || [],
       };
       log('Auction initialized:', data.auctionId, postData, data);
+      // data cannot be posted directly because it is not clonable which is required for chrome postMessage passsing
       postEvent('AUCTION_INIT', postData);
     });
 

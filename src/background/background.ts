@@ -31,7 +31,9 @@ initStorage().then(() => {
   console.log('[Ad Inspector] Background service worker initialized');
 });
 
-function getOrCreateSlot(tabId: number, adUnitCode: string, auctionId: string, sizes: number[][] = []): AdSlot | undefined {
+function getOrCreateSlot(tabId: number, adUnitCode: string, auctionId: string): AdSlot | undefined {
+  if (!adUnitCode) throw new Error('adUnitCode is required to get or create a slot');
+
   const data = tabData.get(tabId);
   if (!data) return undefined;
 
@@ -41,9 +43,6 @@ function getOrCreateSlot(tabId: number, adUnitCode: string, auctionId: string, s
   // Try exact composite match first
   let slot = data.adSlots.find((s) => `${s.slotCode}||${s.auctionId}` === compositeKey);
   if (slot) {
-    if (sizes.length > 0 && (!slot.sizes || slot.sizes.length === 0)) {
-      slot.sizes = sizes;
-    }
     return slot;
   }
 
@@ -51,7 +50,7 @@ function getOrCreateSlot(tabId: number, adUnitCode: string, auctionId: string, s
   // (prevents merging auctions from different page loads)
   if (auctionId && auctionId !== 'unknown') {
     const timestamp = auctionTimestamps.get(auctionId) || Date.now();
-    slot = { slotCode: adUnitCode, auctionId, timestamp, divId: '', sizes, bids: [] };
+    slot = { slotCode: adUnitCode, auctionId, timestamp, divId: '', sizes: [], bids: [] };
     data.adSlots.push(slot);
     return slot;
   }
@@ -60,14 +59,11 @@ function getOrCreateSlot(tabId: number, adUnitCode: string, auctionId: string, s
   const shortName = adUnitCode.split('/').pop() || adUnitCode;
   slot = data.adSlots.find((s) => s.slotCode === shortName || s.gpt?.adUnitPath === adUnitCode);
   if (slot) {
-    if (sizes.length > 0 && (!slot.sizes || slot.sizes.length === 0)) {
-      slot.sizes = sizes;
-    }
     return slot;
   }
 
   // Create new slot (no auctionId — use 'unknown')
-  slot = { slotCode: adUnitCode, auctionId: auctionId || 'unknown', timestamp: Date.now(), divId: '', sizes, bids: [] };
+  slot = { slotCode: adUnitCode, auctionId: auctionId || 'unknown', timestamp: Date.now(), divId: '', sizes: [], bids: [] };
   data.adSlots.push(slot);
   return slot;
 }
@@ -83,10 +79,14 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
     auctionTimestamps.set(auctionId, initTimestamp);
 
     // Create initial slots for each adUnitCode in the auction
-    const adUnitCodes = (d.adUnitCodes as string[]) || [];
-    for (const adUnitCode of adUnitCodes) {
-      const slot = getOrCreateSlot(tabId, adUnitCode, auctionId, []);
+    const adUnits = (d.adUnits as object[]) || [];
+    for (const adUnit of adUnits) {
+      const adUnitCode = (adUnit as Record<string, unknown>).code as string;
+      const sizes = (adUnit as Record<string, unknown>).sizes as number[][] || [];
+      const slot = getOrCreateSlot(tabId, adUnitCode, auctionId);
       if (slot) {
+        // Set sizes from AUCTION_INIT (this is the definitive source)
+        slot.sizes = sizes;
         // Set timestamp from AUCTION_INIT
         slot.timestamp = initTimestamp;
       }
@@ -134,8 +134,8 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
 
   switch (message.type) {
     case 'BID_RESPONSE': {
-      const { adUnitCode, sizes, bid } = d as { adUnitCode: string; sizes: number[][]; bid: Bid };
-      const slot = getOrCreateSlot(tabId, adUnitCode, bid.auctionId || auctionId, sizes);
+      const { adUnitCode, bid } = d as { adUnitCode: string; sizes: number[][]; bid: Bid };
+      const slot = getOrCreateSlot(tabId, adUnitCode, bid.auctionId || auctionId);
       if (!slot) return;
       // Avoid duplicate bids (by bidId)
       if (!slot.bids.some((b) => b.bidId === bid.bidId)) {
@@ -169,8 +169,14 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
       const slotKey = divId || adUnitPath.split('/').pop() || adUnitPath;
       // Use the GPT-correlated auctionId
       const gptSlotAuctionId = gptAuctionId || auctionId;
-      const slot = getOrCreateSlot(tabId, slotKey, gptSlotAuctionId, sizeArr);
+      const slot = getOrCreateSlot(tabId, slotKey, gptSlotAuctionId);
       if (!slot) return;
+
+      // Set sizes only if not already set (e.g., by AUCTION_INIT)
+      // This may happend that adslot render ads outside of prebid auction flow
+      if (sizeArr.length > 0 && (!slot.sizes || slot.sizes.length === 0)) {
+        slot.sizes = sizeArr;
+      }
 
       if (divId) slot.divId = divId;
 
