@@ -1,6 +1,6 @@
 // Storage module - handles persistence to file system using IndexedDB for handle storage
 
-import { getDirectoryHandle, getDirectoryName as getIdbName, storeDirectoryHandle, clearDirectoryHandle } from './idb';
+import { getDirectoryInfo, storeDirectoryHandle, clearDirectoryHandle } from './idb';
 
 /** A complete auction file written to disk */
 export interface AuctionFile {
@@ -25,8 +25,7 @@ const ensureInitialized = async (): Promise<void> => {
   isLoading = true;
 
   try {
-    const handle = await getDirectoryHandle();
-    const name = await getIdbName();
+    const { handle, name } = await getDirectoryInfo();
 
     if (handle) {
       directoryHandle = handle;

@@ -39,6 +39,45 @@ export const storeDirectoryHandle = async (handle: FileSystemDirectoryHandle, na
   });
 };
 
+// Get directory handle and name from IndexedDB in a single transaction
+export const getDirectoryInfo = async (): Promise<{
+  handle: FileSystemDirectoryHandle | null;
+  name: string | null;
+}> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+
+    const handleRequest = store.get('directoryHandle');
+    const nameRequest = store.get('directoryName');
+
+    // Wait for both requests to complete
+    let handleResult: FileSystemDirectoryHandle | null = null;
+    let nameResult: string | null = null;
+    let completed = 0;
+
+    const checkComplete = () => {
+      completed++;
+      if (completed === 2) {
+        resolve({ handle: handleResult, name: nameResult });
+      }
+    };
+
+    handleRequest.onsuccess = () => {
+      handleResult = handleRequest.result || null;
+      checkComplete();
+    };
+    handleRequest.onerror = () => reject(handleRequest.error);
+
+    nameRequest.onsuccess = () => {
+      nameResult = nameRequest.result || null;
+      checkComplete();
+    };
+    nameRequest.onerror = () => reject(nameRequest.error);
+  });
+};
+
 // Get directory handle from IndexedDB
 export const getDirectoryHandle = async (): Promise<FileSystemDirectoryHandle | null> => {
   const db = await openDB();
