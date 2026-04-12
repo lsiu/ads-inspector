@@ -103,35 +103,30 @@ export function handleAuctionEvent(tabId: number, message: AuctionEventMessage):
   const d = message.data as Record<string, unknown>;
   const auctionId = (d.auctionId as string) || '';
 
-  // ── Handle AUCTION_INIT: slots will get timestamp via getOrCreateSlot() ──
-  if (message.type === 'AUCTION_INIT' && auctionId) {
-    const initTimestamp = (d.timestamp as number) || message.timestamp;
-
-    // Create initial slots for each adUnitCode in the auction
-    const adUnits = (d.adUnits as object[]) || [];
-    for (const adUnit of adUnits) {
-      const adUnitCode = (adUnit as Record<string, unknown>).code as string;
-      const sizes = (adUnit as Record<string, unknown>).sizes as number[][] || [];
-      const slot = getOrCreateSlot(tabId, adUnitCode, auctionId);
-      if (slot) {
-        // Set sizes from AUCTION_INIT (this is the definitive source)
-        slot.sizes = sizes;
-        slot.mediaTypes = (adUnit as Record<string, unknown>).mediaTypes || {};
-        // Set timestamp from AUCTION_INIT
-        slot.timestamp = initTimestamp;
-      }
-    }
-  }
-
-  // ── Accumulate per-tab state for Panel snapshots ──
   if (!tabData.has(tabId)) {
     tabData.set(tabId, { pageUrl: message.pageUrl, timestamp: message.timestamp, adSlots: [] });
   }
-  const data = tabData.get(tabId)!;
-  data.pageUrl = message.pageUrl;
-  data.timestamp = message.timestamp;
 
   switch (message.type) {
+    case 'AUCTION_INIT': {
+      const initTimestamp = (d.timestamp as number) || message.timestamp;
+
+      // Create initial slots for each adUnitCode in the auction
+      const adUnits = (d.adUnits as object[]) || [];
+      for (const adUnit of adUnits) {
+        const adUnitCode = (adUnit as Record<string, unknown>).code as string;
+        const sizes = (adUnit as Record<string, unknown>).sizes as number[][] || [];
+        const slot = getOrCreateSlot(tabId, adUnitCode, auctionId);
+        if (slot) {
+          // Set sizes from AUCTION_INIT (this is the definitive source)
+          slot.sizes = sizes;
+          slot.mediaTypes = (adUnit as Record<string, unknown>).mediaTypes || {};
+          // Set timestamp from AUCTION_INIT
+          slot.timestamp = initTimestamp;
+        }
+      }
+      break;
+    }
     case 'BID_RESPONSE': {
       const { adUnitCode, bid } = d as { adUnitCode: string; sizes: number[][]; bid: Bid };
       const slot = getOrCreateSlot(tabId, adUnitCode, bid.auctionId || auctionId);
