@@ -71,7 +71,7 @@ const CreativePreview: React.FC<CreativePreviewProps> = ({ adHtml, gpt }) => {
           </h3>
           <div className="bg-gray-800 rounded-lg p-4">
             <div className="bg-white rounded p-2">
-              <pre className="text-xs text-black whitespace-pre-wrap break-words">
+              <pre className="text-xs text-black whitespace-pre-wrap break-words max-h-64 overflow-y-auto">
                 {adHtml}
               </pre>
             </div>
