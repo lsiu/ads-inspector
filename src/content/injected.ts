@@ -169,10 +169,7 @@ const setupGtpListener = () => {
       const pbjs = (window as any).pbjs || { que: [] };
       const auctionIdSet = new Set(pbjs.getBidResponsesForAdUnitCode(slot.getSlotElementId()).bids.map((b: Bid) => b.auctionId))
 
-      if (auctionIdSet.size === 0 || auctionIdSet.size > 1) {
-        console.error('[Ad Inspector] GPT slot render ended with no or multiple auction IDs:', auctionIdSet?.size, Array.from(auctionIdSet).join(', '), adUnitPath, divId, event, targetingMap);
-      }
-      const auctionId = Array.from(auctionIdSet).pop() ?? null;
+      const auctionId = getAuctionId(auctionIdSet, adUnitPath, divId, event, targetingMap);
 
       const postData = {
         auctionId,
@@ -239,3 +236,28 @@ window.addEventListener('message', (event) => {
     };
   }
 });
+
+function getAuctionId(auctionIdSet: Set<unknown>, adUnitPath: string, divId: string, event: googletag.events.SlotRenderEndedEvent, targetingMap: Record<string, string | string[]>) {
+  const possibleKeys = ['hb_auctionid', 'prebid_auction_id', 'hb_auction_id'];
+  for (const key of possibleKeys) {
+    const value = targetingMap[key];
+    if (value) {
+      const id = Array.isArray(value) ? value[0] : value;
+      if (typeof id === 'string') {
+        log(`Found auction ID in targeting: ${key}=${id}`);
+        return id;
+      }
+    }
+  }
+
+  if (auctionIdSet.size === 1) {
+    return Array.from(auctionIdSet).pop() ?? null;
+  } 
+  
+  if (auctionIdSet.size === 0) {
+    // this can be normal if the GPT slot is not related to a Prebid auction, so we just return undefined without logging an error
+    return undefined;
+  }
+  
+  console.error('[Ad Inspector] GPT slot render ended with no or multiple auction IDs:', auctionIdSet?.size, Array.from(auctionIdSet).join(', '), adUnitPath, divId, event, targetingMap);
+}
