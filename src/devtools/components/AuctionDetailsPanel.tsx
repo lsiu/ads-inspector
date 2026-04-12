@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Bid, GptInfo } from '../../shared/types';
 import type { AuctionEvent } from '../types';
+import CreativePreview from './CreativePreview';
 
 interface AuctionDetailsPanelProps {
   selectedAuction: AuctionEvent | null;
@@ -44,16 +45,11 @@ const BidRow: React.FC<{
         </div>
       </div>
       {/* Expanded Ad Markup */}
-      {expanded && bid.ad && (
+      {expanded && (
         <div className="bg-gray-800 px-4 py-3 border-t border-gray-700">
-          <h4 className="text-sm font-semibold text-gray-300 mb-2">Ad Markup</h4>
-          <div className="bg-white rounded p-2">
-            <pre className="text-xs text-black whitespace-pre-wrap break-words max-h-96 overflow-y-auto">
-              {bid.ad}
-            </pre>
-          </div>
+          <CreativePreview adHtml={bid.ad} />
         </div>
-      )}
+      )} 
     </div>
   );
 };
@@ -178,6 +174,12 @@ const AuctionDetailsPanel: React.FC<AuctionDetailsPanelProps> = ({ selectedAucti
         </div>
       )}
 
+      {/* Creative Preview */}
+      <CreativePreview 
+        adHtml={selectedAuction.winningBid?.ad} 
+        gpt={selectedAuction.gpt} 
+      />
+
       {/* All Bids */}
       <div>
         <h3 className="text-lg font-semibold text-white mb-2">All Bids ({selectedAuction.bids.length})</h3>
@@ -198,43 +200,6 @@ const AuctionDetailsPanel: React.FC<AuctionDetailsPanelProps> = ({ selectedAucti
               isWinner={selectedAuction.winningBid?.bidId === bid.bidId}
             />
           ))}
-        </div>
-      </div>
-
-      {/* Creative Preview */}
-      {selectedAuction.winningBid?.ad ? (
-        <div>
-          <h3 className="text-lg font-semibold text-white mb-2">
-            Creative Preview
-          </h3>
-          <div className="bg-gray-800 rounded-lg p-4">
-            <div
-              className="bg-white rounded p-2"
-              dangerouslySetInnerHTML={{ __html: selectedAuction.winningBid.ad }}
-            />
-          </div>
-        </div>
-      ) : selectedAuction.gpt && !selectedAuction.winningBid?.ad ? (
-        <div>
-          <h3 className="text-lg font-semibold text-white mb-2">
-            Creative Preview
-          </h3>
-          <div className="bg-gray-800 rounded-lg p-4 text-sm text-gray-400">
-            <p>
-              Creative HTML is not accessible for GPT-rendered ads.
-              Ads are rendered in cross-origin iframes via SafeFrame.
-            </p>
-          </div>
-        </div>
-      ) : null}
-      <h3 className="text-lg font-semibold text-white mb-2">
-        Ad Markup
-      </h3>
-      <div className="bg-gray-800 rounded-lg p-4">
-        <div className="bg-white rounded p-2">
-          <pre className="text-xs text-black whitespace-pre-wrap break-words">
-            {selectedAuction.winningBid?.ad}
-          </pre>
         </div>
       </div>
     </div>
