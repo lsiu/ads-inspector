@@ -23,6 +23,27 @@ const cleanupTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
 // Time in milliseconds before cleaning up inactive auction data
 const CLEANUP_DELAY_MS = 60 * 1000; // 1 minute
 
+/**
+ * Parse GPT size values into a number array.
+ * Handles array input, string formats like "300x250", or null.
+ */
+function parseGptSizes(sizeRaw: unknown): number[][] {
+  if (Array.isArray(sizeRaw)) {
+    // Could be [300, 250] or [[300, 250], [728, 90]]
+    if (sizeRaw.length > 0 && Array.isArray(sizeRaw[0])) {
+      return sizeRaw as number[][];
+    }
+    return [sizeRaw as number[]];
+  }
+  if (typeof sizeRaw === 'string') {
+    const match = sizeRaw.match(/^(\d+)x(\d+)$/);
+    if (match) {
+      return [[parseInt(match[1], 10), parseInt(match[2], 10)]];
+    }
+  }
+  return [];
+}
+
 function getOrCreateSlot(tabId: number, adUnitCode: string, auctionId: string): AdSlot | undefined {
   if (!adUnitCode) throw new Error('adUnitCode is required to get or create a slot');
 
@@ -180,9 +201,8 @@ export function handleAuctionEvent(tabId: number, message: AuctionEventMessage):
       const sourceAgnosticLineItemId = (d.sourceAgnosticLineItemId as number | null) ?? null;
       const advertiserId = (d.advertiserId as number | null) ?? null;
       const campaignId = (d.campaignId as number | null) ?? null;
-      const sizeRaw = d.size as number[] | string | null;
-      const size = Array.isArray(sizeRaw) ? sizeRaw : null;
-      const sizeArr: number[][] = size ? [size] : [];
+      const sizeArr = parseGptSizes(d.size);
+      const firstSize = sizeArr.length > 0 ? sizeArr[0] : null;
 
       // Use divId as the slot key — this matches Prebid's adUnitCode
       const slotKey = divId || adUnitPath.split('/').pop() || adUnitPath;
@@ -201,7 +221,7 @@ export function handleAuctionEvent(tabId: number, message: AuctionEventMessage):
 
       const gptInfo: GptInfo = {
         creativeId, sourceAgnosticCreativeId, lineItemId, sourceAgnosticLineItemId,
-        advertiserId, campaignId, isEmpty, isBackfill, size, divId, adUnitPath,
+        advertiserId, campaignId, isEmpty, isBackfill, size: firstSize, divId, adUnitPath,
       };
       slot.gpt = gptInfo;
 
@@ -213,8 +233,8 @@ export function handleAuctionEvent(tabId: number, message: AuctionEventMessage):
           bidId: d.bidId as string,
           cpm: 0,
           currency: d.currency as string,
-          width: Array.isArray(size) ? size[0] : 0,
-          height: Array.isArray(size) ? size[1] : 0,
+          width: Array.isArray(firstSize) ? firstSize[0] : 0,
+          height: Array.isArray(firstSize) ? firstSize[1] : 0,
           ad: d.ad as string,
           creativeId: String(sourceAgnosticCreativeId ?? creativeId ?? ''),
           auctionId: slot.auctionId,
