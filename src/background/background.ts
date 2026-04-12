@@ -18,9 +18,6 @@ const tabData: Map<number, AdAuctionData> = new Map();
 // Accumulated events per auction (for per-auction file writes)
 const auctionFiles: Map<string, AuctionFile> = new Map();
 
-// Definitive timestamp per auction (from AUCTION_INIT event)
-const auctionTimestamps: Map<string, number> = new Map();
-
 // DevTools panel ports keyed by tab ID
 const devToolsPorts: Map<number, chrome.runtime.Port> = new Map();
 
@@ -50,7 +47,9 @@ function getOrCreateSlot(tabId: number, adUnitCode: string, auctionId: string): 
   // If we have a valid auctionId, always create a new slot
   // (prevents merging auctions from different page loads)
   if (auctionId && auctionId !== 'unknown') {
-    const timestamp = auctionTimestamps.get(auctionId) || Date.now();
+    // Get timestamp from first existing slot with matching auctionId, or use current time
+    const existingSlot = data.adSlots.find(s => s.auctionId === auctionId);
+    const timestamp = existingSlot?.timestamp || Date.now();
     slot = { slotCode: adUnitCode, auctionId, timestamp, divId: '', sizes: [], bids: [] };
     data.adSlots.push(slot);
     return slot;
@@ -74,10 +73,9 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
   const d = message.data as Record<string, unknown>;
   const auctionId = (d.auctionId as string) || '';
 
-  // ── Handle AUCTION_INIT: store the definitive timestamp ──
+  // ── Handle AUCTION_INIT: slots will get timestamp via getOrCreateSlot() ──
   if (message.type === 'AUCTION_INIT' && auctionId) {
     const initTimestamp = (d.timestamp as number) || message.timestamp;
-    auctionTimestamps.set(auctionId, initTimestamp);
 
     // Create initial slots for each adUnitCode in the auction
     const adUnits = (d.adUnits as object[]) || [];
@@ -99,10 +97,13 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
   if (auctionId) {
     let af = auctionFiles.get(auctionId);
     if (!af) {
+      // Get timestamp from first existing slot with matching auctionId
+      const data = tabData.get(tabId);
+      const existingSlot = data?.adSlots.find(s => s.auctionId === auctionId);
       af = {
         pageUrl: message.pageUrl,
         auctionId,
-        timestamp: auctionTimestamps.get(auctionId) || message.timestamp,
+        timestamp: existingSlot?.timestamp || message.timestamp,
         events: [],
         savedAt: Date.now(),
       };
@@ -317,7 +318,6 @@ chrome.runtime.onConnect.addListener((port) => {
       if (message.type === 'CLEAR_DATA') {
         tabData.clear();
         auctionFiles.clear();
-        auctionTimestamps.clear();
         port.postMessage({ type: 'AUCTION_DATA_UPDATE', payload: { pageUrl: '', timestamp: Date.now(), adSlots: [] } });
       }
 
@@ -381,7 +381,6 @@ chrome.webNavigation.onCommitted.addListener((details) => {
   // Clear all auction state for this tab
   tabData.delete(tabId);
   auctionFiles.clear();
-  auctionTimestamps.clear();
 
   // Notify all connected DevTools panels
   devToolsPorts.forEach((port) => {
