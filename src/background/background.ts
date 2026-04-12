@@ -380,9 +380,6 @@ function writeAuctionData(af: AuctionFile | undefined) {
     isDirectoryConfigured().then((configured) => {
       if (!configured && !directoryCheckRequested) {
         directoryCheckRequested = true;
-        devToolsPorts.forEach((port) => {
-          port.postMessage({ type: 'DIRECTORY_NOT_CONFIGURED' });
-        });
       }
     });
   });

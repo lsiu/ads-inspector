@@ -55,11 +55,6 @@ const Panel: React.FC = () => {
         setIsDirectoryConfigured(message.isConfigured);
         setDirectoryName(message.directoryName);
       }
-
-      if (message.type === 'DIRECTORY_NOT_CONFIGURED') {
-        setIsDirectoryConfigured(false);
-        setDirectoryName(null);
-      }
     });
 
     connection.onDisconnect.addListener(() => {

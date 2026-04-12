@@ -72,14 +72,9 @@ export interface DirectoryStatusMessage {
   directoryName: string | null;
 }
 
-export interface DirectoryNotConfiguredMessage {
-  type: 'DIRECTORY_NOT_CONFIGURED';
-}
-
 export type BackgroundToPanelMessage =
   | AuctionDataUpdateMessage
-  | DirectoryStatusMessage
-  | DirectoryNotConfiguredMessage;
+  | DirectoryStatusMessage;
 
 // ──────────────────────────────────────────────
 // Shared data interfaces
