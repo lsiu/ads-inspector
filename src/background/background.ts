@@ -22,6 +22,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'CONTENT_SCRIPT_LOADED') {
     console.log('[Ad Inspector] Content script loaded for:', message.payload.url);
+    return true;
   }
 
   if (message.type === 'CHECK_DIRECTORY_STATUS') {
