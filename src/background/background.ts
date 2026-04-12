@@ -93,40 +93,6 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
     }
   }
 
-  // ── Accumulate per-auction events for file writing ──
-  if (auctionId) {
-    let af = auctionFiles.get(auctionId);
-    if (!af) {
-      // Get timestamp from first existing slot with matching auctionId
-      const data = tabData.get(tabId);
-      const existingSlot = data?.adSlots.find(s => s.auctionId === auctionId);
-      af = {
-        pageUrl: message.pageUrl,
-        auctionId,
-        timestamp: existingSlot?.timestamp || message.timestamp,
-        events: [],
-        savedAt: Date.now(),
-      };
-      auctionFiles.set(auctionId, af);
-    }
-    af.events.push({
-      type: message.type,
-      timestamp: message.timestamp,
-      data: message.data,
-    });
-    // Write the auction file on every event
-    writeAuctionFile(af).then(() => {
-      isDirectoryConfigured().then((configured) => {
-        if (!configured && !directoryCheckRequested) {
-          directoryCheckRequested = true;
-          devToolsPorts.forEach((port) => {
-            port.postMessage({ type: 'DIRECTORY_NOT_CONFIGURED' });
-          });
-        }
-      });
-    });
-  }
-
   // ── Accumulate per-tab state for Panel snapshots ──
   if (!tabData.has(tabId)) {
     tabData.set(tabId, { pageUrl: message.pageUrl, timestamp: message.timestamp, adSlots: [] });
@@ -211,6 +177,24 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
     case 'AUCTION_END':
     case 'GTM_EVENT':
       // These event types accumulate for file writing but don't change slot state
+      break;
+  }
+
+  const af = accumulateAuctionDataForFileLog(auctionId, tabId, message);
+
+  // only write auction file on ending events
+  switch (message.type) {
+    case 'AUCTION_INIT':
+    case 'BID_REQUESTED':
+    case 'BID_RESPONSE':
+    case 'GTM_EVENT':
+      break;
+    case 'BID_WON':
+    case 'AUCTION_END':
+    case 'GPT_RENDER_ENDED':
+      // Write auction file on every event for these types
+      writeAuctionData(af);
+      
       break;
   }
 }
@@ -388,4 +372,46 @@ chrome.webNavigation.onCommitted.addListener((details) => {
   });
 });
 
+function writeAuctionData(af: AuctionFile | undefined) {
+  if (!af) return;
+  
+  // Write the auction file on every event
+  writeAuctionFile(af).then(() => {
+    isDirectoryConfigured().then((configured) => {
+      if (!configured && !directoryCheckRequested) {
+        directoryCheckRequested = true;
+        devToolsPorts.forEach((port) => {
+          port.postMessage({ type: 'DIRECTORY_NOT_CONFIGURED' });
+        });
+      }
+    });
+  });
+}
+
 console.log('[Ad Inspector] Background service worker started');
+
+function accumulateAuctionDataForFileLog(auctionId: string, tabId: number, message: AuctionEventMessage) {
+  if (auctionId) {
+    let af = auctionFiles.get(auctionId);
+    if (!af) {
+      // Get timestamp from first existing slot with matching auctionId
+      const data = tabData.get(tabId);
+      const existingSlot = data?.adSlots.find(s => s.auctionId === auctionId);
+      af = {
+        pageUrl: message.pageUrl,
+        auctionId,
+        timestamp: existingSlot?.timestamp || message.timestamp,
+        events: [],
+        savedAt: Date.now(),
+      };
+      auctionFiles.set(auctionId, af);
+    }
+    af.events.push({
+      type: message.type,
+      timestamp: message.timestamp,
+      data: message.data,
+    });
+    return af;
+  }
+  return undefined
+}
