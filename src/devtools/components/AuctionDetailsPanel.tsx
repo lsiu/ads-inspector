@@ -22,10 +22,13 @@ const BidRow: React.FC<{
           isWinner ? 'bg-green-900/20 hover:bg-green-900/30' : 'hover:bg-gray-800'
         }`}
       >
-        <div className="col-span-4 text-gray-400 font-mono text-xs truncate" title={bid.bidId}>
+        <div className="col-span-3 text-gray-400 font-mono text-xs truncate" title={bid.bidId}>
           {bid.bidId}
         </div>
-        <div className="col-span-3 text-white">{bid.bidder}</div>
+        <div className="col-span-2 text-white">{bid.bidder}</div>
+        <div className="col-span-2 text-white">
+          {bid.adomain || 'unknown'}
+        </div>
         <div className="col-span-2 text-right text-green-400">
           {bid.currency} {bid.cpm.toFixed(2)}
         </div>
@@ -125,6 +128,12 @@ const AuctionDetailsPanel: React.FC<AuctionDetailsPanelProps> = ({ selectedAucti
                 {selectedAuction.winningBid.bidId || 'unknown'}
               </span>
             </div>
+            <div>
+              <span className="text-gray-400">Adv. Domain</span>
+              <span className="ml-2 text-white">
+                {selectedAuction.winningBid.adomain || 'unknown'}
+              </span>
+            </div>
           </div>
 
           {/* GPT Metadata */}
@@ -186,8 +195,9 @@ const AuctionDetailsPanel: React.FC<AuctionDetailsPanelProps> = ({ selectedAucti
         <div className="space-y-1">
           {/* Header */}
           <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-800 text-sm">
-            <div className="col-span-4 text-gray-400">Bid ID</div>
-            <div className="col-span-3 text-gray-400">Bidder</div>
+            <div className="col-span-3 text-gray-400">Bid ID</div>
+            <div className="col-span-2 text-gray-400">Bidder</div>
+            <div className="col-span-2 text-gray-400">Adv. Domain</div>
             <div className="col-span-2 text-right text-gray-400">CPM</div>
             <div className="col-span-2 text-right text-gray-400">Size</div>
             <div className="col-span-1 text-left text-gray-400">Status</div>

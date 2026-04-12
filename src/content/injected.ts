@@ -68,6 +68,7 @@ const waitForPbjs = setInterval(() => {
         creativeId: data.creativeId,
         auctionId: data.auctionId || '',
         adUnitCode: data.adUnitCode,
+        adomain: data?.adserverTargeting?.hb_adomain || undefined,
       };
       const postData = {
         auctionId: data.auctionId || '',
@@ -92,6 +93,7 @@ const waitForPbjs = setInterval(() => {
         creativeId: data.creativeId,
         auctionId: data.auctionId || '',
         adUnitCode: data.adUnitCode,
+        adomain: data?.adserverTargeting?.hb_adomain || undefined,
       };
       
       const postData = {

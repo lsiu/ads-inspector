@@ -96,6 +96,7 @@ export interface Bid {
   creativeId?: string;
   auctionId: string;
   adUnitCode: string;
+  adomain?: string;
 }
 
 export interface GptInfo {
