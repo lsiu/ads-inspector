@@ -3,6 +3,17 @@
   "name": "Ad Auction Inspector",
   "version": "1.0.0",
   "description": "Monitor Prebid.js and Google Tag Manager ad auctions in Chrome DevTools",
+  "icons": {
+    "16": "src/public/icon16.png",
+    "48": "src/public/icon48.png",
+    "128": "src/public/icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "src/public/icon16.png",
+      "48": "src/public/icon48.png"
+    }
+  },
   "permissions": [
     "storage",
     "webNavigation"
