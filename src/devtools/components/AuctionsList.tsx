@@ -137,12 +137,15 @@ const AdSlotGroup: React.FC<{
                       </span>
                       {auction.winningBid?.ad.includes('adsrvr.org/bid/feedback') && auction.winningBid?.bidder !== 'ttd' && <span className="text-blue-300"> (src: TTD)</span>}
                       </span>
-                      <span className={`px-1.5 py-0.5 text-[10px] rounded ${
-                      auction.winningBid.bidder.includes('Google Ad Manager')
-                        ? 'bg-yellow-600/30 text-yellow-400'
-                        : 'bg-green-600/30 text-green-400'
-                      }`}>
-                      {auction.winningBid.currency} {auction.winningBid.cpm.toFixed(2)}
+                      <span className="py-0.5">
+                        <span className="text-xs text-gray-600 px-2"> {auction.bids.length} bids </span>
+                        <span className={`px-1.5 text-[10px] rounded ${
+                        auction.winningBid.bidder.includes('Google Ad Manager')
+                          ? 'bg-yellow-600/30 text-yellow-400'
+                          : 'bg-green-600/30 text-green-400'
+                        }`}>
+                        {auction.winningBid.currency} {auction.winningBid.cpm.toFixed(2)}
+                        </span>
                       </span>
                       
                     </>
