@@ -1,6 +1,6 @@
 // Background service worker - handles message routing, state accumulation, and data persistence
 
-import { initStorage, isDirectoryConfigured, getDirectoryName, clearDirectoryConfig } from './storage';
+import { initStorage, isDirectoryConfigured, getDirectoryName, clearDirectoryConfig, refreshDirectoryCache } from './storage';
 import { handleAuctionEvent, tabData, auctionFiles } from './auction-manager';
 import type {
   AuctionEventType,
@@ -22,25 +22,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'CONTENT_SCRIPT_LOADED') {
     console.log('[Ad Inspector] Content script loaded for:', message.payload.url);
-    return true;
-  }
-
-  if (message.type === 'CHECK_DIRECTORY_STATUS') {
-    isDirectoryConfigured().then((configured) => {
-      getDirectoryName().then((name) => {
-        sendResponse({
-          isConfigured: configured,
-          directoryName: name,
-        });
-      });
-    });
-    return true;
+    return false; // No response needed
   }
 
   if (message.type === 'DIRECTORY_HANDLE_STORED') {
-    console.log('[Ad Inspector] Directory handle stored in IndexedDB');
-    sendResponse({ success: true });
-    return true;
+    refreshDirectoryCache();
+    return false; // No response needed
   }
 
   if (message.type === 'DIRECTORY_HANDLE_CLEARED') {

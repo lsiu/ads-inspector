@@ -78,19 +78,6 @@ export const getDirectoryInfo = async (): Promise<{
   });
 };
 
-// Get directory handle from IndexedDB
-export const getDirectoryHandle = async (): Promise<FileSystemDirectoryHandle | null> => {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    
-    const getRequest = store.get('directoryHandle');
-    getRequest.onsuccess = () => resolve(getRequest.result || null);
-    getRequest.onerror = () => reject(getRequest.error);
-  });
-};
-
 // Get directory name from IndexedDB
 export const getDirectoryName = async (): Promise<string | null> => {
   const db = await openDB();

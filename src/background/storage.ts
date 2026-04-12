@@ -59,6 +59,16 @@ export const setDirectoryHandle = async (handle: FileSystemDirectoryHandle, name
   }
 };
 
+// Refresh the in-memory cache from IndexedDB (called when directory is updated externally)
+export const refreshDirectoryCache = async (): Promise<void> => {
+  // Reset in-memory cache
+  directoryHandle = null;
+  directoryName = null;
+  // Reload from IndexedDB
+  await ensureInitialized();
+  console.log('[Ad Inspector] Directory cache refreshed:', directoryName || 'none');
+};
+
 // Check if directory is configured (triggers lazy initialization)
 export const isDirectoryConfigured = async (): Promise<boolean> => {
   if (directoryHandle !== null) {
