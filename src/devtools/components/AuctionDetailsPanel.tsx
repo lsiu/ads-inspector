@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import type { Bid, GptInfo } from '../../shared/types';
-import type { AuctionEvent } from '../types';
+import type { Bid, GptInfo, AdSlot } from '../../shared/types';
 import CreativePreview from './CreativePreview';
 
 interface AuctionDetailsPanelProps {
-  selectedAuction: AuctionEvent | null;
+  selectedAuction: AdSlot | null;
 }
 
 /** Expandable bid row that shows ad markup when clicked */
@@ -80,6 +79,9 @@ const AuctionDetailsPanel: React.FC<AuctionDetailsPanelProps> = ({ selectedAucti
         </p>
         <p className="text-sm text-gray-400">
           Sizes: {selectedAuction.sizes.map(s => `${s[0]}x${s[1]}`).join(', ') || 'Not specified'}
+        </p>
+        <p className="text-sm text-gray-400">
+          Media Types: {Object.keys(selectedAuction?.mediaTypes || {}).join(', ') || 'Not specified'}
         </p>
       </div>
 

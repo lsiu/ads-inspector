@@ -122,10 +122,17 @@ export interface AdSlot {
   bids: Bid[];
   winningBid?: Bid;
   gpt?: GptInfo;
+  mediaTypes?: object;
 }
 
 export interface AdAuctionData {
   pageUrl: string;
   timestamp: number;
   adSlots: AdSlot[];
+}
+
+/** A unique ID for an AdSlot. An AdSlot can be auctioned off multiple times */
+export function getAdSlotId(slot: AdSlot): string | undefined {
+  if (!slot) return undefined;
+  return `${slot.slotCode || 'unknown'}-${slot.auctionId || 'unknown'}`;
 }

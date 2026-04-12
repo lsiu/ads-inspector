@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
-import type { AuctionEvent } from '../types';
+import type { AdSlot } from '../../shared/types';
+import { getAdSlotId } from '../../shared/types';
 
 interface AuctionsListProps {
-  auctions: Map<string, AuctionEvent[]>;
-  selectedAuction: AuctionEvent | null;
-  onSelectAuction: (auction: AuctionEvent) => void;
+  auctions: Map<string, AdSlot[]>;
+  selectedAuction: AdSlot | null;
+  onSelectAuction: (auction: AdSlot) => void;
 }
 
 const AuctionsList: React.FC<AuctionsListProps> = ({ auctions, selectedAuction, onSelectAuction }) => {
@@ -63,15 +64,15 @@ const AuctionsList: React.FC<AuctionsListProps> = ({ auctions, selectedAuction, 
 /** Renders a collapsible group of auctions for a single ad unit */
 const AdSlotGroup: React.FC<{
   slotCode: string;
-  auctions: AuctionEvent[];
-  selectedAuction: AuctionEvent | null;
-  onSelectAuction: (auction: AuctionEvent) => void;
+  auctions: AdSlot[];
+  selectedAuction: AdSlot | null;
+  onSelectAuction: (auction: AdSlot) => void;
   onHighlight: (slotCode: string) => void;
 }> = ({ slotCode, auctions, selectedAuction, onSelectAuction, onHighlight }) => {
   const [expanded, setExpanded] = useState(true);
 
   const topBid = auctions.reduce((a1, a2) => (a1.winningBid?.cpm || 0) > (a2.winningBid?.cpm || 0) ? a1 : a2).winningBid;
-  const isAnySelected = auctions.some((a) => selectedAuction?.id === a.id);
+  const isAnySelected = auctions.some((a) => getAdSlotId(selectedAuction!) === getAdSlotId(a));
 
   return (
     <div className={isAnySelected ? 'bg-blue-900/20' : ''}>
@@ -109,11 +110,11 @@ const AdSlotGroup: React.FC<{
         <ul className="divide-y divide-gray-700/50">
           {auctions.map((auction) => (
             <li
-              data-auction-id={auction.id}
-              key={auction.id}
+              data-auction-id={getAdSlotId(auction)}
+              key={getAdSlotId(auction)}
               onClick={() => onSelectAuction(auction)}
               className={`pl-8 pr-4 py-2 cursor-pointer transition-colors text-xs ${
-                selectedAuction?.id === auction.id
+                selectedAuction && getAdSlotId(selectedAuction) === getAdSlotId(auction)
                   ? 'bg-blue-900/50 border-l-2 border-blue-500'
                   : 'hover:bg-gray-800 border-l-2 border-transparent'
               }`}

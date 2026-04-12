@@ -2,34 +2,24 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import AuctionsList from './components/AuctionsList';
 import AuctionDetailsPanel from './components/AuctionDetailsPanel';
 import type { AdSlot } from '../shared/types';
-import type { AuctionEvent } from './types';
 
 const Panel: React.FC = () => {
-  // Map<adUnitCode, AuctionEvent[]> — groups auctions by slot
-  const [auctionEvents, setAuctionEvents] = useState<Map<string, AuctionEvent[]>>(new Map());
-  const [selectedAuction, setSelectedAuction] = useState<AuctionEvent | null>(null);
+  // Map<adUnitCode, AdSlot[]> — groups auctions by slot
+  const [auctionEvents, setAuctionEvents] = useState<Map<string, AdSlot[]>>(new Map());
+  const [selectedAuction, setSelectedAuction] = useState<AdSlot | null>(null);
   const portRef = useRef<chrome.runtime.Port | null>(null);
   const [isDirectoryConfigured, setIsDirectoryConfigured] = useState<boolean>(false);
   const [directoryName, setDirectoryName] = useState<string | null>(null);
 
   // Accumulate slots from an AUCTION_DATA_UPDATE snapshot, grouped by adUnitCode
   const applySnapshot = useCallback((adSlots: AdSlot[]) => {
-    const grouped = new Map<string, AuctionEvent[]>();
+    const grouped = new Map<string, AdSlot[]>();
     adSlots.forEach((slot) => {
       const key = slot.slotCode;
       if (!grouped.has(key)) {
         grouped.set(key, []);
       }
-      grouped.get(key)!.push({
-        id: `${slot.slotCode}-${slot.auctionId || 'unknown'}`,
-        slotCode: slot.slotCode,
-        auctionId: slot.auctionId,
-        timestamp: slot.timestamp,
-        bids: slot.bids,
-        winningBid: slot.winningBid,
-        sizes: slot.sizes,
-        gpt: slot.gpt,
-      });
+      grouped.get(key)!.push(slot);
     });
 
     // Sort each group by timestamp (newest first)

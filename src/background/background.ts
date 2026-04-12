@@ -10,6 +10,7 @@ import type {
   AdSlot,
   AdAuctionData,
 } from '../shared/types';
+import { getAdSlotId } from '../shared/types';
 
 // Store accumulated auction state by tab ID (for Panel snapshots)
 const tabData: Map<number, AdAuctionData> = new Map();
@@ -38,10 +39,10 @@ function getOrCreateSlot(tabId: number, adUnitCode: string, auctionId: string): 
   if (!data) return undefined;
 
   // Composite key: slotCode + auctionId (same ad unit can be re-auctioned across page reloads)
-  const compositeKey = `${adUnitCode}||${auctionId}`;
+  const compositeKey = getAdSlotId({ slotCode: adUnitCode, auctionId } as AdSlot);
 
   // Try exact composite match first
-  let slot = data.adSlots.find((s) => `${s.slotCode}||${s.auctionId}` === compositeKey);
+  let slot = data.adSlots.find((s) => getAdSlotId(s) === compositeKey);
   if (slot) {
     return slot;
   }
@@ -87,6 +88,7 @@ function handleAuctionEvent(tabId: number, message: AuctionEventMessage): void {
       if (slot) {
         // Set sizes from AUCTION_INIT (this is the definitive source)
         slot.sizes = sizes;
+        slot.mediaTypes = (adUnit as Record<string, unknown>).mediaTypes || {};
         // Set timestamp from AUCTION_INIT
         slot.timestamp = initTimestamp;
       }
