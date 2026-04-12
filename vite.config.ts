@@ -10,6 +10,7 @@ export default defineConfig({
     crx({ manifest }),
   ],
   build: {
+    sourcemap: process.env.NODE_ENV !== 'production',
     minify: process.env.NODE_ENV === 'production',
     rolldownOptions: {
       input: ['src/devtools/panel.html'],
