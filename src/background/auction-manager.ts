@@ -1,6 +1,6 @@
 // Auction state management - handles auction event processing and state accumulation
 
-import { isDirectoryConfigured, writeAuctionFile } from './storage';
+import { writeAuctionFile } from './storage';
 import type { AuctionFile } from './storage';
 import type {
   AuctionEventMessage,
@@ -17,8 +17,11 @@ export const tabData: Map<number, AdAuctionData> = new Map();
 // Accumulated events per auction (for per-auction file writes)
 export const auctionFiles: Map<string, AuctionFile> = new Map();
 
-// Track if directory config has been checked
-let directoryCheckRequested = false;
+// Track cleanup timers for auction files (auctionId -> timer)
+const cleanupTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+
+// Time in milliseconds before cleaning up inactive auction data
+const CLEANUP_DELAY_MS = 60 * 1000; // 1 minute
 
 function getOrCreateSlot(tabId: number, adUnitCode: string, auctionId: string): AdSlot | undefined {
   if (!adUnitCode) throw new Error('adUnitCode is required to get or create a slot');
@@ -85,16 +88,38 @@ function accumulateAuctionDataForFileLog(auctionId: string, tabId: number, messa
   return undefined;
 }
 
+/**
+ * Remove auction data from the map after a period of inactivity
+ */
+function cleanupAuction(auctionId: string): void {
+  auctionFiles.delete(auctionId);
+  cleanupTimers.delete(auctionId);
+  console.log('[Ad Inspector] Cleaned up inactive auction:', auctionId);
+}
+
+/**
+ * Schedule cleanup for an auction after CLEANUP_DELAY_MS of inactivity.
+ * Clears any existing timer to reset the countdown on new activity.
+ */
+function scheduleCleanup(auctionId: string): void {
+  // Clear existing timer if there's ongoing activity
+  const existingTimer = cleanupTimers.get(auctionId);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+  }
+
+  // Set new timer
+  const timer = setTimeout(() => cleanupAuction(auctionId), CLEANUP_DELAY_MS);
+  cleanupTimers.set(auctionId, timer);
+}
+
 function writeAuctionData(af: AuctionFile | undefined) {
   if (!af) return;
 
   // Write the auction file on every event
   writeAuctionFile(af).then(() => {
-    isDirectoryConfigured().then((configured) => {
-      if (!configured && !directoryCheckRequested) {
-        directoryCheckRequested = true;
-      }
-    });
+    // Schedule cleanup after 1 minute of inactivity
+    scheduleCleanup(af.auctionId);
   });
 }
 
