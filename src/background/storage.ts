@@ -1,6 +1,6 @@
 // Storage module - handles persistence to file system using IndexedDB for handle storage
 
-import { getDirectoryInfo, storeDirectoryHandle, clearDirectoryHandle } from './idb';
+import { getDirectoryInfo, storeDirectoryHandle, clearDirectoryHandle } from '../shared/idb';
 
 /** A complete auction file written to disk */
 export interface AuctionFile {
