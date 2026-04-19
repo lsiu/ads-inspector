@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import AuctionsList from './components/AuctionsList';
 import AuctionDetailsPanel from './components/AuctionDetailsPanel';
-import type { AdSlot } from '../shared/types';
+import type { AdSlot, SourceDetectionConfig } from '../shared/types';
 
 const Panel: React.FC = () => {
   // Map<adUnitCode, AdSlot[]> — groups auctions by slot
@@ -10,6 +10,11 @@ const Panel: React.FC = () => {
   const portRef = useRef<chrome.runtime.Port | null>(null);
   const [isDirectoryConfigured, setIsDirectoryConfigured] = useState<boolean>(false);
   const [directoryName, setDirectoryName] = useState<string | null>(null);
+  const [sourceDetectionConfig, setSourceDetectionConfig] = useState<SourceDetectionConfig>({
+    adMarkupPattern: 'adsrvr.org/bid/feedback',
+    attributedBidder: 'ttd',
+    enabled: true,
+  });
 
   // Accumulate slots from an AUCTION_DATA_UPDATE snapshot, grouped by adUnitCode
   const applySnapshot = useCallback((adSlots: AdSlot[]) => {
@@ -30,6 +35,15 @@ const Panel: React.FC = () => {
       events.sort((a, b) => b.timestamp - a.timestamp);
     });
     setAuctionEvents(grouped);
+  }, []);
+
+  // Load source detection config from chrome.storage.sync
+  useEffect(() => {
+    chrome.storage.sync.get('sourceDetectionConfig', (result) => {
+      if (result.sourceDetectionConfig) {
+        setSourceDetectionConfig(result.sourceDetectionConfig);
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -159,7 +173,10 @@ const Panel: React.FC = () => {
 
         {/* Details Panel */}
         <div className="flex-1 overflow-y-auto p-4">
-          <AuctionDetailsPanel selectedAuction={selectedAuction} />
+          <AuctionDetailsPanel 
+            selectedAuction={selectedAuction}
+            sourceDetectionConfig={sourceDetectionConfig}
+          />
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@ import './index.css';
 
 // Import shared IndexedDB helpers
 import { storeDirectoryHandle, getDirectoryName, clearDirectoryHandle } from '../shared/idb';
+import type { SourceDetectionConfig } from '../shared/types';
 
 const Options: React.FC = () => {
   const [directoryName, setDirectoryName] = useState<string>('');
@@ -11,6 +12,12 @@ const Options: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [highlightedBidder, setHighlightedBidder] = useState<string>('');
   const [bidderSaveStatus, setBidderSaveStatus] = useState<'idle' | 'saved'>('idle');
+  const [sourceDetection, setSourceDetection] = useState<SourceDetectionConfig>({
+    adMarkupPattern: 'adsrvr.org/bid/feedback',
+    attributedBidder: 'ttd',
+    enabled: true,
+  });
+  const [sourceDetectionStatus, setSourceDetectionStatus] = useState<'idle' | 'saved'>('idle');
 
   useEffect(() => {
     // Load directory name from IndexedDB
@@ -25,12 +32,25 @@ const Options: React.FC = () => {
         setHighlightedBidder(result.highlightedBidder);
       }
     });
+    // Load source detection config from chrome.storage.sync
+    chrome.storage.sync.get('sourceDetectionConfig', (result) => {
+      if (result.sourceDetectionConfig) {
+        setSourceDetection(result.sourceDetectionConfig);
+      }
+    });
   }, []);
 
   const handleSaveHighlightedBidder = () => {
     chrome.storage.sync.set({ highlightedBidder: highlightedBidder.trim() }, () => {
       setBidderSaveStatus('saved');
       setTimeout(() => setBidderSaveStatus('idle'), 2000);
+    });
+  };
+
+  const handleSaveSourceDetection = () => {
+    chrome.storage.sync.set({ sourceDetectionConfig: sourceDetection }, () => {
+      setSourceDetectionStatus('saved');
+      setTimeout(() => setSourceDetectionStatus('idle'), 2000);
     });
   };
 
@@ -174,6 +194,59 @@ const Options: React.FC = () => {
               <p className="text-green-400">Highlighted bidder saved!</p>
             </div>
           )}
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold text-white mb-4">Source Detection</h2>
+          <p className="text-gray-400 mb-4">
+            Configure automatic detection of ad sources by pattern matching. When an ad markup contains the specified pattern and the bidder is different from the attributed bidder, a source label will be shown.
+          </p>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Enable Source Detection</label>
+              <input
+                type="checkbox"
+                checked={sourceDetection.enabled}
+                onChange={(e) => setSourceDetection({ ...sourceDetection, enabled: e.target.checked })}
+                className="w-4 h-4 cursor-pointer"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Ad Markup Pattern (text to search for)</label>
+              <input
+                type="text"
+                value={sourceDetection.adMarkupPattern}
+                onChange={(e) => setSourceDetection({ ...sourceDetection, adMarkupPattern: e.target.value })}
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveSourceDetection()}
+                placeholder="e.g. adsrvr.org/bid/feedback"
+                className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">The text to look for in ad markup</p>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-300 mb-2">Attributed Bidder</label>
+              <input
+                type="text"
+                value={sourceDetection.attributedBidder}
+                onChange={(e) => setSourceDetection({ ...sourceDetection, attributedBidder: e.target.value })}
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveSourceDetection()}
+                placeholder="e.g. ttd"
+                className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">The bidder name to attribute when pattern is detected</p>
+            </div>
+            <button
+              onClick={handleSaveSourceDetection}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            >
+              Save Source Detection Config
+            </button>
+            {sourceDetectionStatus === 'saved' && (
+              <div className="p-3 bg-green-900/30 border border-green-700 rounded-lg">
+                <p className="text-green-400">Source detection config saved!</p>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="bg-gray-800 rounded-lg p-6">

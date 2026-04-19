@@ -2,6 +2,16 @@
 // Used across injected.ts, content.tsx, background.ts, Panel.tsx, and storage.ts
 
 // ──────────────────────────────────────────────
+// Configuration types
+// ──────────────────────────────────────────────
+
+export interface SourceDetectionConfig {
+  adMarkupPattern: string;
+  attributedBidder: string;
+  enabled: boolean;
+}
+
+// ──────────────────────────────────────────────
 // Auction event types (injected → content → background)
 // ──────────────────────────────────────────────
 

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import type { Bid, GptInfo, AdSlot } from '../../shared/types';
+import type { SourceDetectionConfig } from '../../shared/types';
 import CreativePreview from './CreativePreview';
 
 interface AuctionDetailsPanelProps {
   selectedAuction: AdSlot | null;
+  sourceDetectionConfig?: SourceDetectionConfig;
 }
 
 /** Expandable bid row that shows ad markup when clicked */
@@ -56,7 +58,12 @@ const BidRow: React.FC<{
   );
 };
 
-const AuctionDetailsPanel: React.FC<AuctionDetailsPanelProps> = ({ selectedAuction }) => {
+const AuctionDetailsPanel: React.FC<AuctionDetailsPanelProps> = ({ selectedAuction, sourceDetectionConfig }) => {
+  const config: SourceDetectionConfig = sourceDetectionConfig || {
+    adMarkupPattern: 'adsrvr.org/bid/feedback',
+    attributedBidder: 'ttd',
+    enabled: true,
+  };
   if (!selectedAuction) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
@@ -102,7 +109,7 @@ const AuctionDetailsPanel: React.FC<AuctionDetailsPanelProps> = ({ selectedAucti
             <div>
               <span className="text-gray-400">Bidder:</span>
               <span className="ml-2 text-white">{selectedAuction.winningBid.bidder}</span>
-              {selectedAuction.winningBid?.ad.includes('adsrvr.org/bid/feedback') && selectedAuction.winningBid?.bidder !== 'ttd' && <span className="text-blue-300"> (src: TTD)</span>}
+              {config.enabled && selectedAuction.winningBid?.ad.includes(config.adMarkupPattern) && selectedAuction.winningBid?.bidder !== config.attributedBidder && <span className="text-blue-300"> (src: {config.attributedBidder.toUpperCase()})</span>}
             </div>
             <div>
               <span className="text-gray-400">CPM:</span>

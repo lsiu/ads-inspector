@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import type { AdSlot } from '../../shared/types';
+import type { SourceDetectionConfig } from '../../shared/types';
 import { getAdSlotId } from '../../shared/types';
 
 interface AuctionsListProps {
@@ -11,11 +12,21 @@ interface AuctionsListProps {
 const AuctionsList: React.FC<AuctionsListProps> = ({ auctions, selectedAuction, onSelectAuction }) => {
   const portRef = useRef<chrome.runtime.Port | null>(null);
   const [highlightedBidder, setHighlightedBidder] = useState<string>('');
+  const [sourceDetectionConfig, setSourceDetectionConfig] = useState<SourceDetectionConfig>({
+    adMarkupPattern: 'adsrvr.org/bid/feedback',
+    attributedBidder: 'ttd',
+    enabled: true,
+  });
 
   React.useEffect(() => {
     chrome.storage.sync.get('highlightedBidder', (result) => {
       if (typeof result.highlightedBidder === 'string') {
         setHighlightedBidder(result.highlightedBidder);
+      }
+    });
+    chrome.storage.sync.get('sourceDetectionConfig', (result) => {
+      if (result.sourceDetectionConfig) {
+        setSourceDetectionConfig(result.sourceDetectionConfig);
       }
     });
   }, []);
@@ -64,6 +75,7 @@ const AuctionsList: React.FC<AuctionsListProps> = ({ auctions, selectedAuction, 
             onSelectAuction={onSelectAuction}
             onHighlight={handleHighlight}
             highlightedBidder={highlightedBidder}
+            sourceDetectionConfig={sourceDetectionConfig}
           />
         ))}
       </div>
@@ -79,7 +91,8 @@ const AdSlotGroup: React.FC<{
   onSelectAuction: (auction: AdSlot) => void;
   onHighlight: (slotCode: string) => void;
   highlightedBidder: string;
-}> = ({ slotCode, auctions, selectedAuction, onSelectAuction, onHighlight, highlightedBidder }) => {
+  sourceDetectionConfig: SourceDetectionConfig;
+}> = ({ slotCode, auctions, selectedAuction, onSelectAuction, onHighlight, highlightedBidder, sourceDetectionConfig }) => {
   const [expanded, setExpanded] = useState(true);
 
   const topBid = auctions.reduce((a1, a2) => (a1.winningBid?.cpm || 0) > (a2.winningBid?.cpm || 0) ? a1 : a2).winningBid;
@@ -146,7 +159,7 @@ const AdSlotGroup: React.FC<{
                       <span className="text-gray-300 truncate max-w-[200px]" title={auction.winningBid.bidder}>
                       {auction.winningBid.bidder}
                       </span>
-                      {auction.winningBid?.ad.includes('adsrvr.org/bid/feedback') && auction.winningBid?.bidder !== 'ttd' && <span className="text-blue-300"> (src: TTD)</span>}
+                      {sourceDetectionConfig.enabled && auction.winningBid?.ad.includes(sourceDetectionConfig.adMarkupPattern) && auction.winningBid?.bidder !== sourceDetectionConfig.attributedBidder && <span className="text-blue-300"> (src: {sourceDetectionConfig.attributedBidder.toUpperCase()})</span>}
                       </span>
                       <span className="py-0.5">
                         <span className="text-xs text-gray-600 px-2"> {auction.bids.length} bids </span>
