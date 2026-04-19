@@ -9,6 +9,8 @@ const Options: React.FC = () => {
   const [directoryName, setDirectoryName] = useState<string>('');
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [highlightedBidder, setHighlightedBidder] = useState<string>('');
+  const [bidderSaveStatus, setBidderSaveStatus] = useState<'idle' | 'saved'>('idle');
 
   useEffect(() => {
     // Load directory name from IndexedDB
@@ -17,7 +19,20 @@ const Options: React.FC = () => {
         setDirectoryName(name);
       }
     });
+    // Load highlighted bidder from chrome.storage.sync
+    chrome.storage.sync.get('highlightedBidder', (result) => {
+      if (result.highlightedBidder) {
+        setHighlightedBidder(result.highlightedBidder);
+      }
+    });
   }, []);
+
+  const handleSaveHighlightedBidder = () => {
+    chrome.storage.sync.set({ highlightedBidder: highlightedBidder.trim() }, () => {
+      setBidderSaveStatus('saved');
+      setTimeout(() => setBidderSaveStatus('idle'), 2000);
+    });
+  };
 
   const handleSelectDirectory = async () => {
     try {
@@ -118,6 +133,45 @@ const Options: React.FC = () => {
           {status === 'error' && (
             <div className="mt-4 p-3 bg-red-900/30 border border-red-700 rounded-lg">
               <p className="text-red-400">{errorMessage}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold text-white mb-4">Highlighted Bidder</h2>
+          <p className="text-gray-400 mb-4">
+            Enter a bidder key to highlight in the auction list. When this bidder participates in an auction, their name will be shown next to the bid count.
+          </p>
+          <div className="flex items-center gap-3">
+            <input
+              type="text"
+              value={highlightedBidder}
+              onChange={(e) => setHighlightedBidder(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSaveHighlightedBidder()}
+              placeholder="e.g. ttd, appnexus"
+              className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={handleSaveHighlightedBidder}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            >
+              Save
+            </button>
+            {highlightedBidder && (
+              <button
+                onClick={() => {
+                  setHighlightedBidder('');
+                  chrome.storage.sync.set({ highlightedBidder: '' });
+                }}
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {bidderSaveStatus === 'saved' && (
+            <div className="mt-3 p-3 bg-green-900/30 border border-green-700 rounded-lg">
+              <p className="text-green-400">Highlighted bidder saved!</p>
             </div>
           )}
         </div>

@@ -10,6 +10,15 @@ interface AuctionsListProps {
 
 const AuctionsList: React.FC<AuctionsListProps> = ({ auctions, selectedAuction, onSelectAuction }) => {
   const portRef = useRef<chrome.runtime.Port | null>(null);
+  const [highlightedBidder, setHighlightedBidder] = useState<string>('');
+
+  React.useEffect(() => {
+    chrome.storage.sync.get('highlightedBidder', (result) => {
+      if (typeof result.highlightedBidder === 'string') {
+        setHighlightedBidder(result.highlightedBidder);
+      }
+    });
+  }, []);
 
   // Connect to background service worker for highlight functionality
   React.useEffect(() => {
@@ -54,6 +63,7 @@ const AuctionsList: React.FC<AuctionsListProps> = ({ auctions, selectedAuction, 
             selectedAuction={selectedAuction}
             onSelectAuction={onSelectAuction}
             onHighlight={handleHighlight}
+            highlightedBidder={highlightedBidder}
           />
         ))}
       </div>
@@ -68,7 +78,8 @@ const AdSlotGroup: React.FC<{
   selectedAuction: AdSlot | null;
   onSelectAuction: (auction: AdSlot) => void;
   onHighlight: (slotCode: string) => void;
-}> = ({ slotCode, auctions, selectedAuction, onSelectAuction, onHighlight }) => {
+  highlightedBidder: string;
+}> = ({ slotCode, auctions, selectedAuction, onSelectAuction, onHighlight, highlightedBidder }) => {
   const [expanded, setExpanded] = useState(true);
 
   const topBid = auctions.reduce((a1, a2) => (a1.winningBid?.cpm || 0) > (a2.winningBid?.cpm || 0) ? a1 : a2).winningBid;
@@ -139,6 +150,9 @@ const AdSlotGroup: React.FC<{
                       </span>
                       <span className="py-0.5">
                         <span className="text-xs text-gray-600 px-2"> {auction.bids.length} bids </span>
+                        {highlightedBidder && auction.bids.some((b) => b.bidder === highlightedBidder) && (
+                          <span className="text-xs text-orange-400 font-semibold mr-1">{highlightedBidder}</span>
+                        )}
                         <span className={`px-1.5 text-[10px] rounded ${
                         auction.winningBid.bidder.includes('Google Ad Manager')
                           ? 'bg-yellow-600/30 text-yellow-400'
@@ -150,7 +164,12 @@ const AdSlotGroup: React.FC<{
                       
                     </>
                     ) : (
-                    <span className="text-xs text-gray-600 px-2">{auction.bids.length} bids</span>
+                    <span>
+                      <span className="text-xs text-gray-600 px-2">{auction.bids.length} bids</span>
+                      {highlightedBidder && auction.bids.some((b) => b.bidder === highlightedBidder) && (
+                        <span className="text-xs text-orange-400 font-semibold">{highlightedBidder}</span>
+                      )}
+                    </span>
                   )}
                 </div>
               </div>
