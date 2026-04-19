@@ -13,6 +13,9 @@ const Panel: React.FC = () => {
 
   // Accumulate slots from an AUCTION_DATA_UPDATE snapshot, grouped by adUnitCode
   const applySnapshot = useCallback((adSlots: AdSlot[]) => {
+    if (adSlots.length === 0) {
+      setSelectedAuction(null);
+    }
     const grouped = new Map<string, AdSlot[]>();
     adSlots.forEach((slot) => {
       const key = slot.slotCode;
