@@ -39,10 +39,22 @@ export function setupPrebidListener(log: LogFn, postEvent: PostEvent) {
 
     // Listen to bid requested
     pbjs.onEvent('bidRequested', (data: any) => {
+      const requestedBids = Array.isArray(data.bids)
+        ? data.bids.map((bid: any) => ({
+            bidder: bid.bidder || data.bidderCode,
+            bidId: bid.bidId,
+            bidderRequestId: bid.bidderRequestId || data.bidderRequestId,
+            adUnitCode: bid.adUnitCode || data.adUnitCode,
+          }))
+        : [];
+
       const postData = {
+        auctionId: data.auctionId || '',
         bidder: data.bidderCode,
+        bidderRequestId: data.bidderRequestId,
         adUnitCode: data.adUnitCode,
         sizes: data.sizes || [],
+        requestedBids,
       };
       log('Bid requested:', postData, data);
       postEvent('BID_REQUESTED', postData);

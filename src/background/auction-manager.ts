@@ -8,6 +8,7 @@ import type {
   GptInfo,
   AdSlot,
   AdAuctionData,
+  RequestedBid,
 } from '../shared/types';
 import { getAdSlotId } from '../shared/types';
 
@@ -81,6 +82,24 @@ function getOrCreateSlot(tabId: number, adUnitCode: string, auctionId: string): 
   slot = { slotCode: adUnitCode, auctionId: auctionId || 'unknown', timestamp: Date.now(), divId: '', sizes: [], bids: [] };
   data.adSlots.push(slot);
   return slot;
+}
+
+function mergeRequestedBids(slot: AdSlot, requestedBids: RequestedBid[]) {
+  if (!slot.requestedBids) {
+    slot.requestedBids = [];
+  }
+
+  for (const requested of requestedBids) {
+    const alreadyAdded = slot.requestedBids.some((existing) =>
+      existing.bidder === requested.bidder &&
+      existing.adUnitCode === requested.adUnitCode &&
+      existing.bidId === requested.bidId,
+    );
+
+    if (!alreadyAdded) {
+      slot.requestedBids.push(requested);
+    }
+  }
 }
 
 function accumulateAuctionDataForFileLog(auctionId: string, tabId: number, message: AuctionEventMessage): AuctionFile | undefined {
@@ -189,6 +208,59 @@ export function handleAuctionEvent(tabId: number, message: AuctionEventMessage):
       if (slot) slot.winningBid = winningBid;
       break;
     }
+    case 'BID_REQUESTED': {
+      const {
+        adUnitCode,
+        bidder,
+        bidderRequestId,
+        requestedBids,
+      } = d as {
+        adUnitCode: string;
+        bidder?: string;
+        bidderRequestId?: string;
+        requestedBids?: RequestedBid[];
+      };
+
+      const baseRequestedBids: RequestedBid[] = Array.isArray(requestedBids)
+        ? requestedBids.filter((requested) => !!requested?.adUnitCode)
+        : [];
+
+      // Some integrations only provide top-level bidder/adUnitCode on BID_REQUESTED.
+      if (baseRequestedBids.length === 0 && bidder && adUnitCode) {
+        baseRequestedBids.push({
+          bidder,
+          bidderRequestId,
+          adUnitCode,
+        });
+      }
+
+      for (const requested of baseRequestedBids) {
+        const slot = getOrCreateSlot(tabId, requested.adUnitCode, auctionId);
+        if (!slot) continue;
+        mergeRequestedBids(slot, [requested]);
+      }
+      break;
+    }
+    case 'AUCTION_END': {
+      const { adUnitCode } = d as { adUnitCode?: string };
+      const data = tabData.get(tabId);
+      if (!data) return;
+
+      if (adUnitCode) {
+        const slot = getOrCreateSlot(tabId, adUnitCode, auctionId);
+        if (slot) {
+          slot.auctionEnded = true;
+        }
+        break;
+      }
+
+      data.adSlots
+        .filter((slot) => slot.auctionId === auctionId)
+        .forEach((slot) => {
+          slot.auctionEnded = true;
+        });
+      break;
+    }
     case 'GPT_RENDER_ENDED': {
       const adUnitPath = (d.adUnitPath as string) || '';
       const divId = (d.divId as string) || '';
@@ -243,8 +315,6 @@ export function handleAuctionEvent(tabId: number, message: AuctionEventMessage):
       }
       break;
     }
-    case 'BID_REQUESTED':
-    case 'AUCTION_END':
     case 'GTM_EVENT':
       // These event types accumulate for file writing but don't change slot state
       break;

@@ -104,6 +104,13 @@ export interface Bid {
   adomain?: string;
 }
 
+export interface RequestedBid {
+  bidder: string;
+  bidId?: string;
+  bidderRequestId?: string;
+  adUnitCode: string;
+}
+
 export interface GptInfo {
   creativeId: number | null;
   sourceAgnosticCreativeId: number | null;
@@ -125,6 +132,8 @@ export interface AdSlot {
   divId: string;
   sizes: number[][];
   bids: Bid[];
+  requestedBids?: RequestedBid[];
+  auctionEnded?: boolean;
   winningBid?: Bid;
   gpt?: GptInfo;
   mediaTypes?: object;

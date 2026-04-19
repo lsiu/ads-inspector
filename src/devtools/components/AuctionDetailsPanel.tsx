@@ -72,6 +72,33 @@ const AuctionDetailsPanel: React.FC<AuctionDetailsPanelProps> = ({ selectedAucti
     );
   }
 
+  const respondedBidderSet = new Set(selectedAuction.bids.map((bid) => bid.bidder));
+  const respondedBidIdSet = new Set(selectedAuction.bids.map((bid) => bid.bidId));
+  const requestedByBidder = new Map<string, { requested: number; responded: number }>();
+
+  (selectedAuction.requestedBids || []).forEach((requestedBid) => {
+    const bidderStats = requestedByBidder.get(requestedBid.bidder) || { requested: 0, responded: 0 };
+    bidderStats.requested += 1;
+
+    const didRespond = requestedBid.bidId
+      ? respondedBidIdSet.has(requestedBid.bidId)
+      : respondedBidderSet.has(requestedBid.bidder);
+
+    if (didRespond) {
+      bidderStats.responded += 1;
+    }
+
+    requestedByBidder.set(requestedBid.bidder, bidderStats);
+  });
+
+  const requestedBidderRows = Array.from(requestedByBidder.entries())
+    .map(([bidder, stats]) => ({
+      bidder,
+      requested: stats.requested,
+      responded: stats.responded,
+    }))
+    .sort((a, b) => a.bidder.localeCompare(b.bidder));
+
   return (
     <div className="space-y-4">
       <div>
@@ -197,6 +224,53 @@ const AuctionDetailsPanel: React.FC<AuctionDetailsPanelProps> = ({ selectedAucti
         adHtml={selectedAuction.winningBid?.ad} 
         gpt={selectedAuction.gpt} 
       />
+
+      {/* Requested Bidders */}
+      <div>
+        <h3 className="text-lg font-semibold text-white mb-2">
+          Requested Bidders ({requestedBidderRows.length})
+        </h3>
+        {requestedBidderRows.length === 0 ? (
+          <div className="px-3 py-2 text-sm text-gray-500 bg-gray-800 rounded">
+            No bidder request data captured for this auction yet.
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-800 text-sm">
+              <div className="col-span-5 text-gray-400">Bidder</div>
+              <div className="col-span-2 text-right text-gray-400">Requested</div>
+              <div className="col-span-2 text-right text-gray-400">Responded</div>
+              <div className="col-span-3 text-left text-gray-400">Status</div>
+            </div>
+            {requestedBidderRows.map((row) => {
+              const hasResponse = row.responded > 0;
+              const statusLabel = hasResponse
+                ? 'Responded'
+                : selectedAuction.auctionEnded
+                  ? 'No response'
+                  : 'Pending';
+              const statusClassName = hasResponse
+                ? 'bg-green-600 text-white'
+                : selectedAuction.auctionEnded
+                  ? 'bg-red-700 text-white'
+                  : 'bg-yellow-600 text-gray-900';
+
+              return (
+                <div key={row.bidder} className="grid grid-cols-12 gap-2 px-3 py-2 text-sm border-t border-gray-700">
+                  <div className="col-span-5 text-white truncate" title={row.bidder}>{row.bidder}</div>
+                  <div className="col-span-2 text-right text-gray-300">{row.requested}</div>
+                  <div className="col-span-2 text-right text-gray-300">{row.responded}</div>
+                  <div className="col-span-3">
+                    <span className={`px-2 py-0.5 text-xs rounded ${statusClassName}`}>
+                      {statusLabel}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* All Bids */}
       <div>
